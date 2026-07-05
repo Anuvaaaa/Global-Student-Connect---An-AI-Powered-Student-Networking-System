@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Student Connect — Chats</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Phosphor Icons via jsDelivr — version locked -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+
+  <!-- Chat inbox styles -->
+  <link rel="stylesheet" href="chat.css" />
+</head>
+<body>
+
+  <!-- =====================================================================
+       SIDEBAR — Desktop only
+  ===================================================================== -->
+  <nav class="sidebar">
+
+    <div class="sidebar-logo">🌍</div>
+
+    <div class="nav-items">
+
+      <a href="home.html" class="nav-item">
+        <i class="ph-bold ph-house"></i>
+        <span class="tooltip">Home</span>
+      </a>
+
+      <a href="connect.html" class="nav-item">
+        <i class="ph-bold ph-handshake"></i>
+        <span class="tooltip">Connect</span>
+      </a>
+
+      <a href="home.html" class="nav-item post-btn">
+        <div class="post-circle-sidebar">
+          <i class="ph-bold ph-plus"></i>
+        </div>
+        <span class="tooltip">Post Moment</span>
+      </a>
+
+      <!-- Chats is active -->
+      <a href="chat.html" class="nav-item active">
+        <i class="ph-bold ph-chat-circle"></i>
+        <span class="tooltip">Chats</span>
+      </a>
+
+      <a href="profile.html" class="nav-item">
+        <i class="ph-bold ph-user-circle"></i>
+        <span class="tooltip">Profile</span>
+      </a>
+
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="avatar-wrap">
+        <div class="user-avatar">
+          <i class="ph-bold ph-user"></i>
+        </div>
+        <div class="verified-dot"></div>
+      </div>
+      <a href="notifications.html" class="notif-icon">
+        <i class="ph-bold ph-bell"></i>
+        <span class="notif-badge" id="sidebarBadge">0</span>
+      </a>
+    </div>
+
+  </nav>
+
+
+  <!-- =====================================================================
+       MAIN CONTENT
+  ===================================================================== -->
+  <main class="main-content">
+    <div class="inbox-column">
+
+      <!-- Inbox header -->
+      <div class="inbox-header">
+        <h1 class="inbox-title">Chats</h1>
+      </div>
+
+      <!-- -------------------------------------------------------------------
+           SEARCH BAR
+           Filters by name, university, country, last message
+      ------------------------------------------------------------------- -->
+      <div class="search-bar-wrap">
+        <div class="search-bar">
+          <i class="ph-bold ph-magnifying-glass search-icon"></i>
+          <input
+            type="text"
+            class="search-input"
+            id="searchInput"
+            placeholder="Search conversations..."
+            oninput="filterConversations()"
+          />
+          <button type="button" class="search-clear" id="searchClear" onclick="clearSearch()">
+            <i class="ph-bold ph-x"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- -------------------------------------------------------------------
+           CONVERSATIONS LIST
+           Only shows conversations for people/groups user has matched with
+           Filters out ended chats and left groups
+      ------------------------------------------------------------------- -->
+      <div class="conversations-list" id="conversationsList"></div>
+
+      <!-- -------------------------------------------------------------------
+           EMPTY STATE
+           Different messages for:
+           1. No matches yet → prompt to go connect
+           2. Search found nothing → prompt to try different term
+      ------------------------------------------------------------------- -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">💬</div>
+        <div class="empty-title" id="emptyTitle">No conversations yet</div>
+        <p class="empty-desc" id="emptyDesc">
+          Connect with students to start chatting.
+          Find your first match on the Connect page!
+        </p>
+        <a href="connect.html" class="empty-btn" id="emptyBtn">
+          <i class="ph-bold ph-handshake"></i>
+          Find a Match
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+
+  <!-- =====================================================================
+       FLOATING ASSISTANT
+  ===================================================================== -->
+  <button type="button" class="floating-assistant" onclick="toggleAssistant()" aria-label="Open platform assistant">
+    <i class="ph-bold ph-robot"></i>
+  </button>
+
+  <div class="assistant-panel" id="assistantPanel">
+    <div class="assistant-header">
+      <div class="assistant-title">
+        <i class="ph-bold ph-robot"></i>
+        Platform Assistant
+      </div>
+      <button type="button" class="assistant-close" onclick="toggleAssistant()" aria-label="Close assistant">
+        <i class="ph-bold ph-x"></i>
+      </button>
+    </div>
+    <div class="assistant-body">
+      <p class="assistant-intro">Hi! Ask me about your chats 👋</p>
+      <div class="assistant-chips">
+        <button type="button" class="chip" onclick="askQuestion('How do I find more friends?')">How do I find more friends?</button>
+        <button type="button" class="chip" onclick="askQuestion('How does translation work?')">How does translation work?</button>
+        <button type="button" class="chip" onclick="askQuestion('How do I report someone?')">How do I report someone?</button>
+      </div>
+      <div class="assistant-messages" id="assistantMessages"></div>
+    </div>
+    <div class="assistant-input-row">
+      <input type="text" class="assistant-input" id="assistantInput" placeholder="Ask a question..." onkeydown="if(event.key==='Enter') sendQuestion()" />
+      <button type="button" class="assistant-send" onclick="sendQuestion()">
+        <i class="ph-bold ph-paper-plane-tilt"></i>
+      </button>
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       MOBILE TOP BAR
+  ===================================================================== -->
+  <header class="mobile-topbar">
+    <div class="mobile-logo">🌍 Global<span>.SC</span></div>
+    <a href="notifications.html" class="mobile-bell">
+      <i class="ph-bold ph-bell"></i>
+      <span class="notif-badge mobile-badge" id="mobileBadge">0</span>
+    </a>
+  </header>
+
+
+  <!-- =====================================================================
+       BOTTOM NAV — Mobile only
+  ===================================================================== -->
+  <nav class="bottom-nav">
+
+    <a href="home.html" class="bottom-nav-item">
+      <i class="ph-bold ph-house"></i>
+      <span>Home</span>
+    </a>
+
+    <a href="connect.html" class="bottom-nav-item">
+      <i class="ph-bold ph-handshake"></i>
+      <span>Connect</span>
+    </a>
+
+    <a href="home.html" class="bottom-nav-post">
+      <div class="post-circle-mobile">
+        <i class="ph-bold ph-plus"></i>
+      </div>
+      <span>Post</span>
+    </a>
+
+    <a href="chat.html" class="bottom-nav-item active">
+      <i class="ph-bold ph-chat-circle"></i>
+      <span>Chats</span>
+    </a>
+
+    <a href="profile.html" class="bottom-nav-item">
+      <i class="ph-bold ph-user-circle"></i>
+      <span>Profile</span>
+    </a>
+
+  </nav>
+
+
+  <!-- =====================================================================
+       JAVASCRIPT
+  ===================================================================== -->
+  <script>
+
+    // -------------------------------------------------------
+    // NOTIFICATION BADGE
+    // -------------------------------------------------------
+    function updateNotifBadge() {
+      const count = parseInt(localStorage.getItem('unreadNotifs') || '3');
+      ['sidebarBadge', 'mobileBadge'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = count;
+        el.style.display = count > 0 ? 'flex' : 'none';
+      });
+    }
+
+    if (!localStorage.getItem('unreadNotifs')) {
+      localStorage.setItem('unreadNotifs', '3');
+    }
+    updateNotifBadge();
+
+
+    // -------------------------------------------------------
+    // MASTER CONVERSATION DATABASE
+    // All possible conversations that COULD appear in inbox
+    // Only shown if user has matched with them via Connect page
+    // In real project this comes from Django database
+    //
+    // KEY CHANGE from previous version:
+    // This list is the full pool — not everything shows
+    // Only entries whose ID appears in friendMatches or
+    // groupMatches localStorage arrays are shown
+    // -------------------------------------------------------
+    const allConversations = [
+
+      // ---- 1-to-1 conversations ----
+      {
+        type:      'friend',
+        id:        'jp_yuki_001',
+        name:      'Yuki Tanaka',
+        flag:      '🇯🇵',
+        uni:       'Tokyo University',
+        country:   'Japan',
+        interests: 'Music,Coding,Gaming',
+        score:     '88',
+        lastMsg:   'Hi! We just got matched 😊 Really happy to meet you!',
+        time:      'Just now',
+        unread:    2
+      },
+      {
+        type:      'friend',
+        id:        'in_priya_002',
+        name:      'Priya Sharma',
+        flag:      '🇮🇳',
+        uni:       'IIT Delhi',
+        country:   'India',
+        interests: 'Reading,Photography,Music',
+        score:     '76',
+        lastMsg:   'That\'s so cool! I love Photography too 📸',
+        time:      '1h ago',
+        unread:    0
+      },
+      {
+        type:      'friend',
+        id:        'br_lucas_003',
+        name:      'Lucas Mendes',
+        flag:      '🇧🇷',
+        uni:       'USP',
+        country:   'Brazil',
+        interests: 'Football,Coding,Travel',
+        score:     '70',
+        lastMsg:   'Let\'s study Python together sometime!',
+        time:      'Yesterday',
+        unread:    0
+      },
+      {
+        type:      'friend',
+        id:        'fr_camille_004',
+        name:      'Camille Dubois',
+        flag:      '🇫🇷',
+        uni:       'Sorbonne University',
+        country:   'France',
+        interests: 'Art & Design,Travel,Photography',
+        score:     '82',
+        lastMsg:   'Where are you from? 🌍',
+        time:      '2h ago',
+        unread:    1
+      },
+      {
+        type:      'friend',
+        id:        'de_lukas_005',
+        name:      'Lukas Bauer',
+        flag:      '🇩🇪',
+        uni:       'TU Munich',
+        country:   'Germany',
+        interests: 'Coding,Gaming,Reading',
+        score:     '90',
+        lastMsg:   'Have you tried competitive programming?',
+        time:      '3h ago',
+        unread:    0
+      },
+      {
+        type:      'friend',
+        id:        'pk_hassan_006',
+        name:      'Hassan Ali',
+        flag:      '🇵🇰',
+        uni:       'LUMS',
+        country:   'Pakistan',
+        interests: 'Cricket,Coding,Travel',
+        score:     '74',
+        lastMsg:   'PSL season is on 🏏 are you watching?',
+        time:      'Yesterday',
+        unread:    0
+      },
+      {
+        type:      'friend',
+        id:        'mx_sofia_007',
+        name:      'Sofia Reyes',
+        flag:      '🇲🇽',
+        uni:       'UNAM',
+        country:   'Mexico',
+        interests: 'Art & Design,Music,Travel',
+        score:     '80',
+        lastMsg:   'I just finished a new painting! 🎨',
+        time:      '4h ago',
+        unread:    0
+      },
+      {
+        type:      'friend',
+        id:        'ca_aiden_008',
+        name:      'Aiden Park',
+        flag:      '🇨🇦',
+        uni:       'UBC',
+        country:   'Canada',
+        interests: 'Gaming,Cooking,Music',
+        score:     '68',
+        lastMsg:   'Anyone up for Among Us later? 🎮',
+        time:      '5h ago',
+        unread:    0
+      },
+      {
+        type:      'friend',
+        id:        'ng_chidi_009',
+        name:      'Chidi Okafor',
+        flag:      '🇳🇬',
+        uni:       'University of Lagos',
+        country:   'Nigeria',
+        interests: 'Football,Music,Photography',
+        score:     '72',
+        lastMsg:   'Finally done with group project 😂',
+        time:      '6h ago',
+        unread:    0
+      },
+      {
+        type:      'friend',
+        id:        'kr_jiyeon_010',
+        name:      'Jiyeon Park',
+        flag:      '🇰🇷',
+        uni:       'Seoul National University',
+        country:   'South Korea',
+        interests: 'Music,Art & Design,Gaming',
+        score:     '85',
+        lastMsg:   'Lo-fi music makes studying so much better 🎵',
+        time:      '7h ago',
+        unread:    0
+      },
+
+      // ---- Group conversations ----
+      {
+        type:      'group',
+        id:        'group_tech_001',
+        name:      'Global Tech Enthusiasts',
+        members:   'Rafi Khan|BUET|Bangladesh|🇧🇩,Lukas Bauer|TU Munich|Germany|🇩🇪,Hassan Ali|LUMS|Pakistan|🇵🇰',
+        interests: 'Coding,Gaming',
+        lastMsg:   'Rafi: Anyone coding tonight? 💻',
+        time:      '2h ago',
+        unread:    1
+      },
+      {
+        type:      'group',
+        id:        'group_creative_002',
+        name:      'Creative Minds',
+        members:   'Sofia Reyes|UNAM|Mexico|🇲🇽,Aiden Park|UBC|Canada|🇨🇦,Camille Dubois|Sorbonne|France|🇫🇷',
+        interests: 'Art & Design,Music',
+        lastMsg:   'Sofia: I just finished a new painting! 🎨',
+        time:      '3h ago',
+        unread:    0
+      }
+
+    ];
+
+
+    // -------------------------------------------------------
+    // GET MATCHED LISTS FROM LOCALSTORAGE
+    // These are saved by connect.html when user accepts a match
+    // friendMatches = array of matched friend IDs
+    // groupMatches  = array of joined group IDs
+    // Both are separate to avoid badge cross-contamination
+    // -------------------------------------------------------
+    function getFriendMatchedList() {
+      return JSON.parse(localStorage.getItem('friendMatches') || '[]');
+    }
+
+    function getGroupMatchedList() {
+      return JSON.parse(localStorage.getItem('groupMatches') || '[]');
+    }
+
+
+    // -------------------------------------------------------
+    // BUILD INBOX
+    // KEY IMPROVEMENT: Only shows conversations where the user
+    // has actually matched — not everyone in the pool
+    //
+    // Rules:
+    // Friend visible  = in friendMatches AND chatEnded_ is NOT true
+    // Group visible   = in groupMatches  AND leftGroup_ is NOT true
+    // Also applies search filter if provided
+    // -------------------------------------------------------
+    function buildInbox(filter) {
+      const list = document.getElementById('conversationsList');
+      list.innerHTML = '';
+
+      const matchedFriends = getFriendMatchedList();
+const matchedGroups  = getGroupMatchedList();
+
+// Pull in accepted incoming matches from connect.html
+// These are saved to chatInbox when user accepts an incoming request
+const inboxExtras = JSON.parse(localStorage.getItem('chatInbox') || '[]');
+inboxExtras.forEach(extra => {
+  // Add their ID to friendMatches so the filter below passes
+  if (!matchedFriends.includes(extra.id)) {
+    matchedFriends.push(extra.id);
+  }
+  // Add to allConversations if not already there
+  if (!allConversations.find(c => c.id === extra.id)) {
+    allConversations.push({
+      type:      'friend',
+      id:        extra.id,
+      name:      extra.name,
+      flag:      extra.flag,
+      uni:       extra.uni,
+      country:   extra.country,
+      interests: '',
+      score:     '',
+      lastMsg:   extra.lastMsg,
+      time:      extra.time,
+      unread:    extra.unread
+    });
+  }
+});
+
+      const visible = allConversations.filter(conv => {
+
+        if (conv.type === 'friend') {
+          // Must be in matched friends list
+          if (!matchedFriends.includes(conv.id)) return false;
+          // Must not have ended the chat
+          if (localStorage.getItem('chatEnded_' + conv.id) === 'true') return false;
+        }
+
+        if (conv.type === 'group') {
+          // Must be in matched groups list
+          if (!matchedGroups.includes(conv.id)) return false;
+          // Must not have left the group
+          if (localStorage.getItem('leftGroup_' + conv.id) === 'true') return false;
+        }
+
+        // Search filter — checks name, country, university, last message
+        if (filter) {
+          const q = filter.toLowerCase();
+          return (
+            conv.name.toLowerCase().includes(q)    ||
+            (conv.country   && conv.country.toLowerCase().includes(q))  ||
+            (conv.uni       && conv.uni.toLowerCase().includes(q))      ||
+            conv.lastMsg.toLowerCase().includes(q)
+          );
+        }
+
+        return true;
+      });
+
+      // Handle empty state
+      const emptyState = document.getElementById('emptyState');
+
+      if (visible.length === 0) {
+        emptyState.style.display = 'flex';
+
+        if (filter) {
+          // No search results
+          document.getElementById('emptyTitle').textContent = 'No results found';
+          document.getElementById('emptyDesc').textContent  = 'Try searching by name, university or country';
+          document.getElementById('emptyBtn').style.display = 'none';
+        } else if (matchedFriends.length === 0 && matchedGroups.length === 0) {
+          // Never matched anyone
+          document.getElementById('emptyTitle').textContent = 'No conversations yet';
+          document.getElementById('emptyDesc').textContent  = 'Connect with students to start chatting. Find your first match on the Connect page!';
+          document.getElementById('emptyBtn').style.display = 'inline-flex';
+        } else {
+          // Had matches but all ended/left
+          document.getElementById('emptyTitle').textContent = 'No active conversations';
+          document.getElementById('emptyDesc').textContent  = 'All your chats have ended. Find new matches on the Connect page!';
+          document.getElementById('emptyBtn').style.display = 'inline-flex';
+        }
+        return;
+      }
+
+      emptyState.style.display = 'none';
+
+      // Build each visible conversation card
+      visible.forEach(conv => {
+        list.appendChild(buildConversationCard(conv));
+      });
+    }
+
+
+    // -------------------------------------------------------
+    // BUILD A SINGLE CONVERSATION CARD
+    // All content uses textContent — XSS safe
+    // Unread badge shown if unread > 0
+    // Clicking opens correct page with URL params
+    // -------------------------------------------------------
+    function buildConversationCard(conv) {
+
+      const card = document.createElement('div');
+      card.className = 'conversation-card';
+      card.onclick = () => openConversation(conv);
+
+      // --- Avatar ---
+      const avatar = document.createElement('div');
+
+      if (conv.type === 'group') {
+        avatar.className = 'conv-avatar group-avatar';
+        const icon = document.createElement('i');
+        icon.className = 'ph-bold ph-users-three';
+        avatar.appendChild(icon);
+      } else {
+        avatar.className = 'conv-avatar friend-avatar';
+        avatar.textContent = conv.flag;
+      }
+
+      // --- Info ---
+      const info = document.createElement('div');
+      info.className = 'conv-info';
+
+      const name = document.createElement('div');
+      name.className   = 'conv-name';
+      name.textContent = conv.name;
+
+      const lastMsg = document.createElement('div');
+      lastMsg.className   = 'conv-last-msg';
+      lastMsg.textContent = conv.lastMsg;
+
+      info.appendChild(name);
+      info.appendChild(lastMsg);
+
+      // --- Right side: time + unread badge ---
+      const right = document.createElement('div');
+      right.className = 'conv-right';
+
+      const time = document.createElement('div');
+      time.className   = 'conv-time';
+      time.textContent = conv.time;
+
+      right.appendChild(time);
+
+      if (conv.unread > 0) {
+        const badge = document.createElement('div');
+        badge.className   = 'conv-unread';
+        badge.textContent = conv.unread;
+        right.appendChild(badge);
+      }
+
+      card.appendChild(avatar);
+      card.appendChild(info);
+      card.appendChild(right);
+
+      return card;
+    }
+
+
+    // -------------------------------------------------------
+    // OPEN CONVERSATION
+    // Clears unread count then navigates to correct page
+    // -------------------------------------------------------
+    function openConversation(conv) {
+
+      if (conv.type === 'friend') {
+        const params = new URLSearchParams({
+          user:      conv.id,
+          name:      conv.name,
+          flag:      conv.flag,
+          uni:       conv.uni,
+          country:   conv.country,
+          interests: conv.interests,
+          score:     conv.score
+        });
+        window.location.href = 'converse.html?' + params.toString();
+
+      } else {
+        const params = new URLSearchParams({
+          group:     conv.id,
+          name:      conv.name,
+          members:   conv.members,
+          interests: conv.interests
+        });
+        window.location.href = 'group_converse.html?' + params.toString();
+      }
+    }
+
+
+    // -------------------------------------------------------
+    // SEARCH — filters by name, uni, country, last message
+    // -------------------------------------------------------
+    function filterConversations() {
+      const query    = document.getElementById('searchInput').value.trim();
+      const clearBtn = document.getElementById('searchClear');
+      clearBtn.style.display = query.length > 0 ? 'flex' : 'none';
+      buildInbox(query);
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('searchClear').style.display = 'none';
+      buildInbox('');
+      document.getElementById('searchInput').focus();
+    }
+
+
+    // -------------------------------------------------------
+    // BUILD ON LOAD
+    // -------------------------------------------------------
+    buildInbox('');
+
+
+    // -------------------------------------------------------
+    // PLATFORM ASSISTANT
+    // -------------------------------------------------------
+    const answers = {
+      'How do I find more friends?':
+        'Go to the Connect page and tap "Find a Friend". The Matching Agent will find a compatible student and send them a request! 🤝',
+      'How does translation work?':
+        'Auto translation is controlled from your Profile settings. When ON, messages are automatically translated to your preferred language. 🌐',
+      'How do I report someone?':
+        'Inside a conversation, tap the ⋮ menu at the top right and select "Report User". Our Safety Agent will review it. 🛡️'
+    };
+
+    function toggleAssistant() {
+      document.getElementById('assistantPanel').classList.toggle('open');
+    }
+
+    function askQuestion(question) {
+      addMessage(question, 'user');
+      setTimeout(() => {
+        addMessage(answers[question] || "Try asking about finding friends, translation, or reporting!", 'bot');
+      }, 600);
+    }
+
+    function sendQuestion() {
+      const input = document.getElementById('assistantInput');
+      const text  = input.value.trim();
+      if (!text) return;
+      addMessage(text, 'user');
+      input.value = '';
+      setTimeout(() => {
+        addMessage("In the full platform, our AI assistant would answer this in detail. 🤖", 'bot');
+      }, 600);
+    }
+
+    function addMessage(text, sender) {
+      const messages = document.getElementById('assistantMessages');
+      const msg = document.createElement('div');
+      msg.className   = 'assistant-msg ' + sender;
+      msg.textContent = text;
+      messages.appendChild(msg);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+  </script>
+
+</body>
+</html>
+
+
+
+
