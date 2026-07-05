@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Student Connect — Group Conversation</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Phosphor Icons via jsDelivr — version locked -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+
+  <!-- Group conversation styles -->
+  <link rel="stylesheet" href="group_converse.css" />
+</head>
+<body>
+
+  <!-- =====================================================================
+       CHAT HEADER
+       Shows group name and member count
+       Clicking group info area opens group info modal
+  ===================================================================== -->
+  <header class="chat-header">
+
+    <a href="chat.html" class="back-btn" aria-label="Back to inbox">
+      <i class="ph-bold ph-arrow-left"></i>
+    </a>
+
+    <!-- Clickable group info — opens group info modal -->
+    <!-- tabindex="0" + keydown listener makes it keyboard accessible -->
+    <div class="chat-group" id="chatGroupHeader" onclick="openGroupModal()" role="button" tabindex="0" aria-label="Open group info">
+      <div class="group-icon-circle">
+        <i class="ph-bold ph-users-three"></i>
+      </div>
+      <div class="chat-group-info">
+        <div class="chat-group-name" id="groupName">Loading...</div>
+        <div class="chat-group-sub"  id="groupSub">Group Chat</div>
+      </div>
+    </div>
+
+    <button type="button" class="more-btn" onclick="toggleMenu()" aria-label="More options">
+      <i class="ph-bold ph-dots-three-vertical"></i>
+    </button>
+
+    <!-- Dropdown menu -->
+    <div class="dropdown-menu" id="dropdownMenu">
+      <button type="button" class="menu-item leave-item" onclick="leaveGroup()">
+        <i class="ph-bold ph-sign-out"></i>
+        Leave Group
+      </button>
+      <div class="menu-divider"></div>
+      <button type="button" class="menu-item report-item" onclick="reportGroup()">
+        <i class="ph-bold ph-warning"></i>
+        Report User
+      </button>
+    </div>
+
+  </header>
+
+
+  <!-- =====================================================================
+       MEMBERS BAR
+       Small chips showing who is in the group
+  ===================================================================== -->
+  <div class="members-bar">
+    <div class="members-bar-inner" id="membersBar"></div>
+  </div>
+
+
+  <!-- =====================================================================
+       AUTO TRANSLATE BANNER
+       Only shown when auto translate is ON in profile settings
+       If OFF — hidden, manual translate buttons shown per message instead
+  ===================================================================== -->
+  <div class="translate-banner" id="translateBanner">
+    <i class="ph-bold ph-translate"></i>
+    <span id="translateBannerText">Auto-translating messages to English</span>
+  </div>
+
+
+  <!-- =====================================================================
+       MESSAGES AREA
+  ===================================================================== -->
+  <div class="messages-area" id="messagesArea">
+
+    <div class="date-separator"><span>Today</span></div>
+
+    <!-- System message -->
+    <div class="system-message">
+      You were added to this group by the Matching Agent 🤝
+    </div>
+
+    <!-- ---------------------------------------------------------------
+         HARDCODED GROUP MESSAGES
+         Sender names and flags filled by JS from URL params
+         Auto translate: messages translated automatically, no buttons
+         Manual translate: button shown, changes to "Translated ✓" on click
+    --------------------------------------------------------------- -->
+
+    <!-- Message 1 -->
+    <div class="message-wrap received group-msg" id="msg-r1">
+      <div class="msg-sender-info">
+        <span class="msg-sender-flag" id="sender1Flag">🌍</span>
+        <span class="msg-sender-name" id="sender1Name">Member</span>
+      </div>
+      <div class="message-bubble received-bubble">
+        <div class="msg-text" id="msg-r1-text">
+          Hi everyone! So excited to be in this group 👋 Let's get to know each other!
+        </div>
+        <div class="msg-translated" id="msg-r1-translated"></div>
+        <div class="msg-meta">
+          <span class="msg-time">09:14</span>
+          <button type="button" class="translate-btn" id="translate-btn-r1" onclick="translateMessage('msg-r1')">
+            <i class="ph-bold ph-translate"></i>
+            Translate
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Message 2 -->
+    <div class="message-wrap received group-msg" id="msg-r2">
+      <div class="msg-sender-info">
+        <span class="msg-sender-flag" id="sender2Flag">🌍</span>
+        <span class="msg-sender-name" id="sender2Name">Member</span>
+      </div>
+      <div class="message-bubble received-bubble">
+        <div class="msg-text" id="msg-r2-text">
+          Same here! What does everyone study? I'm doing Engineering 😊
+        </div>
+        <div class="msg-translated" id="msg-r2-translated"></div>
+        <div class="msg-meta">
+          <span class="msg-time">09:15</span>
+          <button type="button" class="translate-btn" id="translate-btn-r2" onclick="translateMessage('msg-r2')">
+            <i class="ph-bold ph-translate"></i>
+            Translate
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Message 3 -->
+    <div class="message-wrap received group-msg" id="msg-r3">
+      <div class="msg-sender-info">
+        <span class="msg-sender-flag" id="sender3Flag">🌍</span>
+        <span class="msg-sender-name" id="sender3Name">Member</span>
+      </div>
+      <div class="message-bubble received-bubble">
+        <div class="msg-text" id="msg-r3-text">
+          Computer Science here! Anyone into gaming? 🎮
+        </div>
+        <div class="msg-translated" id="msg-r3-translated"></div>
+        <div class="msg-meta">
+          <span class="msg-time">09:16</span>
+          <button type="button" class="translate-btn" id="translate-btn-r3" onclick="translateMessage('msg-r3')">
+            <i class="ph-bold ph-translate"></i>
+            Translate
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- User sent messages and persisted messages appear here -->
+    <div id="sentMessagesContainer"></div>
+
+  </div>
+
+
+  <!-- =====================================================================
+       MESSAGE INPUT BAR — Text only
+  ===================================================================== -->
+  <div class="input-bar">
+    <input
+      type="text"
+      class="message-input"
+      id="messageInput"
+      placeholder="Message the group..."
+      onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendMessage(); }"
+      maxlength="500"
+    />
+    <button type="button" class="send-btn" onclick="sendMessage()" aria-label="Send message">
+      <i class="ph-bold ph-paper-plane-tilt"></i>
+    </button>
+  </div>
+
+
+  <!-- =====================================================================
+       GROUP INFO MODAL
+       Member rows are clickable — opens mini profile modal for each person
+  ===================================================================== -->
+  <div class="modal-overlay" id="groupModal">
+    <div class="modal group-info-modal">
+
+      <div class="modal-header">
+        <div class="modal-title">Group Info</div>
+        <button type="button" class="modal-close" onclick="closeModal('groupModal')">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <div class="group-modal-top">
+        <div class="group-modal-icon">
+          <i class="ph-bold ph-users-three"></i>
+        </div>
+        <div class="group-modal-name" id="modalGroupName">—</div>
+        <div class="group-modal-sub">Group Chat · Matched by Interest</div>
+      </div>
+
+      <div class="group-modal-section">
+        <div class="group-modal-label">
+          <i class="ph-bold ph-users"></i>
+          Members
+          <span class="group-modal-hint">Tap a member to view profile</span>
+        </div>
+        <!-- Member rows injected by JS — each is clickable -->
+        <div class="group-modal-members" id="modalMembers"></div>
+      </div>
+
+      <div class="group-modal-section">
+        <div class="group-modal-label">
+          <i class="ph-bold ph-star"></i>
+          Shared Interests
+        </div>
+        <div class="group-modal-interests" id="modalInterests"></div>
+      </div>
+
+      <button type="button" class="modal-close-btn" onclick="closeModal('groupModal')">
+        Close
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       MEMBER PROFILE MODAL
+       Opens when a member row is clicked in Group Info
+       Read-only profile preview — like Discord/Slack member profile
+       Data is hardcoded per fake member for prototype
+  ===================================================================== -->
+  <div class="modal-overlay" id="memberProfileModal">
+    <div class="modal member-profile-modal">
+
+      <div class="modal-header">
+        <div class="modal-title">Member Profile</div>
+        <button type="button" class="modal-close" onclick="closeModal('memberProfileModal')">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <!-- Member header -->
+      <div class="member-profile-top">
+        <div class="member-profile-flag" id="mpFlag">🌍</div>
+        <div class="member-profile-name" id="mpName">—</div>
+        <div class="member-profile-sub"  id="mpSub">—</div>
+      </div>
+
+      <!-- Details -->
+      <div class="member-profile-details">
+
+        <div class="mp-detail-item">
+          <i class="ph-bold ph-translate"></i>
+          <div>
+            <div class="mp-detail-label">Languages</div>
+            <div class="mp-detail-value" id="mpLanguages">—</div>
+          </div>
+        </div>
+
+        <div class="mp-detail-item">
+          <i class="ph-bold ph-star"></i>
+          <div>
+            <div class="mp-detail-label">Interests</div>
+            <div class="mp-detail-interests" id="mpInterests"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <button type="button" class="modal-close-btn" onclick="closeModal('memberProfileModal')">
+        Close
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       "THIS IS YOU" MODAL
+       Shown when user clicks their own name in the members list
+  ===================================================================== -->
+  <div class="modal-overlay" id="itsYouModal">
+    <div class="modal its-you-modal">
+
+      <div class="modal-header">
+        <div class="modal-title">Your Profile</div>
+        <button type="button" class="modal-close" onclick="closeModal('itsYouModal')">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <div class="its-you-content">
+        <div class="its-you-emoji">👤</div>
+        <div class="its-you-text">This is you!</div>
+        <p class="its-you-sub">
+          To view or edit your profile, go to the Profile page.
+        </p>
+        <a href="profile.html" class="its-you-btn">
+          <i class="ph-bold ph-user-circle"></i>
+          Go to My Profile
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       LEAVE GROUP MODAL
+  ===================================================================== -->
+  <div class="modal-overlay" id="leaveModal">
+    <div class="modal">
+
+      <div class="modal-header">
+        <div class="modal-title">Leave Group</div>
+        <button type="button" class="modal-close" onclick="closeModal('leaveModal')">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <p class="modal-desc">
+        Are you sure you want to leave this group?
+        It will no longer appear in your inbox and you will
+        not be grouped with these students again.
+      </p>
+
+      <div class="modal-btns">
+        <button type="button" class="leave-confirm-btn" onclick="confirmLeaveGroup()">
+          Leave Group
+        </button>
+        <button type="button" class="modal-cancel-btn" onclick="closeModal('leaveModal')">
+          Cancel
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       REPORT MODAL
+       Dynamically shows which member to report
+  ===================================================================== -->
+  <div class="modal-overlay" id="reportModal">
+    <div class="modal">
+
+      <div class="modal-header">
+        <div class="modal-title">Report User</div>
+        <button type="button" class="modal-close" onclick="closeModal('reportModal')">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <!-- Member selection — which member to report -->
+      <div class="report-section-label">Which member?</div>
+      <div class="report-members" id="reportMembers">
+        <!-- Member radio options injected by JS -->
+      </div>
+
+      <div class="report-section-label" style="margin-top:14px;">Reason</div>
+      <div class="report-options">
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Inappropriate language" />
+          <span>Inappropriate language</span>
+        </label>
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Harassment" />
+          <span>Harassment</span>
+        </label>
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Spam" />
+          <span>Spam</span>
+        </label>
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Offensive content" />
+          <span>Offensive content</span>
+        </label>
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Other" />
+          <span>Other</span>
+        </label>
+      </div>
+
+      <button type="button" class="modal-submit-btn" onclick="submitReport()">
+        Submit Report
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       JAVASCRIPT
+  ===================================================================== -->
+  <script>
+
+    // -------------------------------------------------------
+    // LAYOUT HEIGHT CONSTANTS
+    // Using named constants instead of magic numbers
+    // Makes it easy to update if header sizes change
+    // -------------------------------------------------------
+    const HEADER_HEIGHT  = 64;
+    const MEMBERS_BAR    = 44;
+    const BANNER_HEIGHT  = 38;
+    const INPUT_HEIGHT   = 68;
+
+
+    // -------------------------------------------------------
+    // READ URL PARAMS
+    // URLSearchParams.get() already decodes — no need for
+    // double decodeURIComponent (fix from code review)
+    // Example URL from connect.html:
+    // group_converse.html?group=group_tech_001
+    // &name=Global Tech Enthusiasts
+    // &members=Rafi Khan|BUET|Bangladesh|🇧🇩,Lukas Bauer|TU Munich|Germany|🇩🇪
+    // &interests=Coding,Gaming
+    // -------------------------------------------------------
+    const params       = new URLSearchParams(window.location.search);
+    const groupId      = params.get('group')     || 'unknown_group';
+    const groupName    = params.get('name')       || 'Group Chat';
+    const membersRaw   = params.get('members')    || 'Member 1|University|Unknown|🌍,Member 2|University|Unknown|🌍,Member 3|University|Unknown|🌍';
+    const interestsRaw = params.get('interests')  || 'Coding,Gaming';
+
+    // Parse members — format: "Name|University|Country|Flag"
+    const members = membersRaw.split(',').map(m => {
+      const parts = m.split('|');
+      return {
+        name:    parts[0]?.trim() || 'Member',
+        uni:     parts[1]?.trim() || 'University',
+        country: parts[2]?.trim() || 'Unknown',
+        flag:    parts[3]?.trim() || '🌍'
+      };
+    });
+
+    // Parse group interests
+    const interests = interestsRaw.split(',').map(i => i.trim()).filter(i => i.length > 0);
+
+    // Hardcoded member detail profiles for prototype
+    // In real project these come from Django user database
+    // Placeholder until real profiles are integrated
+    const memberProfiles = {
+      'Rafi Khan':    { languages: 'Bengali · English', interests: ['Coding', 'Cricket', 'Football'] },
+      'Lukas Bauer':  { languages: 'German · English',  interests: ['Coding', 'Gaming', 'Reading'] },
+      'Hassan Ali':   { languages: 'Urdu · English',    interests: ['Cricket', 'Coding', 'Travel'] },
+      'Sofia Reyes':  { languages: 'Spanish · English', interests: ['Art & Design', 'Music', 'Travel'] },
+      'Aiden Park':   { languages: 'English · Korean',  interests: ['Gaming', 'Cooking', 'Music'] },
+      'Camille Dubois': { languages: 'French · English', interests: ['Art & Design', 'Travel', 'Photography'] }
+    };
+
+    // Logged in user's name
+    const myName = localStorage.getItem('userName')?.trim() || 'You';
+
+    // Update page title and header
+    document.title = groupName + ' — Global Student Connect';
+    document.getElementById('groupName').textContent = groupName;
+    document.getElementById('groupSub').textContent  = members.length + ' members · Group Chat';
+
+
+    // -------------------------------------------------------
+    // KEYBOARD ACCESSIBILITY
+    // Chat group header div responds to Enter and Space
+    // -------------------------------------------------------
+    document.getElementById('chatGroupHeader').addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openGroupModal();
+      }
+    });
+
+
+    // -------------------------------------------------------
+    // BUILD MEMBERS BAR
+    // Small chips below the header
+    // -------------------------------------------------------
+    const membersBarEl = document.getElementById('membersBar');
+
+    members.forEach(member => {
+      const chip = document.createElement('div');
+      chip.className = 'member-chip';
+
+      const flag = document.createElement('span');
+      flag.className   = 'member-chip-flag';
+      flag.textContent = member.flag;
+
+      const name = document.createElement('span');
+      name.className   = 'member-chip-name';
+      name.textContent = member.name.split(' ')[0];
+
+      chip.appendChild(flag);
+      chip.appendChild(name);
+      membersBarEl.appendChild(chip);
+    });
+
+    // "You" chip
+    const youChip = document.createElement('div');
+    youChip.className = 'member-chip you-chip';
+    const youSpan = document.createElement('span');
+    youSpan.className   = 'member-chip-name';
+    youSpan.textContent = '+ You';
+    youChip.appendChild(youSpan);
+    membersBarEl.appendChild(youChip);
+
+
+    // -------------------------------------------------------
+    // ASSIGN SENDERS TO HARDCODED MESSAGES
+    // -------------------------------------------------------
+    if (members[0]) {
+      document.getElementById('sender1Flag').textContent = members[0].flag;
+      document.getElementById('sender1Name').textContent = members[0].name;
+    }
+    if (members[1]) {
+      document.getElementById('sender2Flag').textContent = members[1].flag;
+      document.getElementById('sender2Name').textContent = members[1].name;
+    }
+    if (members[2]) {
+      document.getElementById('sender3Flag').textContent = members[2].flag;
+      document.getElementById('sender3Name').textContent = members[2].name;
+    } else {
+      document.getElementById('msg-r3').style.display = 'none';
+    }
+
+
+    // -------------------------------------------------------
+    // AUTO TRANSLATE SETUP
+    // ON  → banner shown, translate buttons hidden, auto translate runs
+    // OFF → banner hidden, translate buttons visible per message
+    // -------------------------------------------------------
+    const autoTranslateOn = localStorage.getItem('userAutoTranslate') !== 'false';
+    const translateInto   = localStorage.getItem('translateInto') ||
+                            localStorage.getItem('userLang1') ||
+                            'English';
+
+    const banner = document.getElementById('translateBanner');
+
+    if (autoTranslateOn) {
+      banner.style.display = 'flex';
+      document.getElementById('translateBannerText').textContent =
+        'Auto-translating messages to ' + translateInto;
+
+      // Hide manual translate buttons — not needed when auto is ON
+      document.querySelectorAll('.translate-btn').forEach(btn => {
+        btn.style.display = 'none';
+      });
+
+      // Auto translate all messages then scroll to bottom
+      setTimeout(() => {
+        translateMessage('msg-r1', true);
+        translateMessage('msg-r2', true);
+        translateMessage('msg-r3', true);
+        scrollToBottom(); // Scroll after heights change from translation
+      }, 800);
+
+    } else {
+      banner.style.display = 'none';
+    }
+
+    // Calculate messages area top using named constants
+    const messagesArea = document.getElementById('messagesArea');
+    messagesArea.style.top = (
+      HEADER_HEIGHT +
+      MEMBERS_BAR +
+      (autoTranslateOn ? BANNER_HEIGHT : 0)
+    ) + 'px';
+
+
+    // -------------------------------------------------------
+    // FAKE TRANSLATIONS FOR GROUP MESSAGES
+    // Placeholder until Translation Agent API is integrated
+    // In real project Translation Agent calls translation API
+    // based on user's translateInto preference from profile
+    // -------------------------------------------------------
+    const fakeTranslations = {
+      'msg-r1': {
+        'Bengali':  'হ্যালো সবাইকে! এই গ্রুপে থাকতে পেরে অনেক উত্তেজিত 👋 চলো একে অপরকে জানি!',
+        'Hindi':    'हाय सबको! इस ग्रुप में होकर बहुत खुश हूं 👋 चलो एक दूसरे को जानते हैं!',
+        'Arabic':   'مرحباً بالجميع! متحمس جداً لأكون في هذه المجموعة 👋 دعونا نتعرف على بعضنا!',
+        'Spanish':  '¡Hola a todos! Muy emocionado de estar en este grupo 👋 ¡Conozcámonos!',
+        'French':   'Bonjour tout le monde! Très content d\'être dans ce groupe 👋 Faisons connaissance!',
+        'default':  '[Auto-translated to ' + translateInto + '] Hi everyone! So excited to be in this group 👋'
+      },
+      'msg-r2': {
+        'Bengali':  'আমিও! সবাই কী পড়াশোনা করো? আমি ইঞ্জিনিয়ারিং করছি 😊',
+        'Hindi':    'मैं भी! सब क्या पढ़ते हैं? मैं इंजीनियरिंग कर रहा हूं 😊',
+        'Arabic':   'أنا أيضاً! ماذا يدرس الجميع؟ أنا أدرس الهندسة 😊',
+        'Spanish':  '¡Yo también! ¿Qué estudian todos? Yo estudio Ingeniería 😊',
+        'French':   'Pareil! Qu\'est-ce que tout le monde étudie? Je fais de l\'ingénierie 😊',
+        'default':  '[Auto-translated to ' + translateInto + '] Same here! What does everyone study?'
+      },
+      'msg-r3': {
+        'Bengali':  'আমি কম্পিউটার সায়েন্স! কেউ কি গেমিং এ আগ্রহী? 🎮',
+        'Hindi':    'मैं कंप्यूटर साइंस! कोई गेमिंग में है? 🎮',
+        'Arabic':   'أنا علوم الحاسب! هل أحد مهتم بالألعاب؟ 🎮',
+        'Spanish':  '¡Informática aquí! ¿Alguien juega videojuegos? 🎮',
+        'French':   'Informatique ici! Quelqu\'un s\'intéresse aux jeux? 🎮',
+        'default':  '[Auto-translated to ' + translateInto + '] Computer Science here! Anyone into gaming? 🎮'
+      }
+    };
+
+    function translateMessage(msgId, isAuto) {
+      const translatedEl = document.getElementById(msgId + '-translated');
+      const btnId        = 'translate-btn-' + msgId.replace('msg-', '');
+      const translateBtn = document.getElementById(btnId);
+      if (!translatedEl) return;
+
+      const translations = fakeTranslations[msgId];
+      if (!translations) return;
+
+      const translated = translations[translateInto] || translations['default'];
+      translatedEl.textContent = translated;
+      translatedEl.style.display = 'block';
+
+      // Manual click: change button to "Translated ✓" — do not hide it
+      if (!isAuto && translateBtn) {
+        translateBtn.innerHTML = '<i class="ph-bold ph-check"></i> Translated ✓';
+        translateBtn.classList.add('translated');
+        translateBtn.disabled = true;
+
+        // Track for Language Bridge badge
+        let used = parseInt(localStorage.getItem('translationsUsed') || '0');
+        localStorage.setItem('translationsUsed', (used + 1).toString());
+      }
+    }
+
+
+    // -------------------------------------------------------
+    // MESSAGE PERSISTENCE
+    // Save and load messages per group in localStorage
+    // So conversations survive page refresh
+    // -------------------------------------------------------
+    const STORAGE_KEY = 'groupMessages_' + groupId;
+
+    // Load persisted sent messages on page load
+    function loadPersistedMessages() {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      saved.forEach(msg => renderSentMessage(msg.text, msg.time, false));
+    }
+
+    // Save a new message to localStorage
+    function persistMessage(text, time) {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      saved.push({ text, time });
+      // Keep only last 50 messages to avoid storage overflow
+      if (saved.length > 50) saved.shift();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    }
+
+    // Render a sent message bubble into the DOM
+    // fromPersist = true means loaded from storage, not tracked again
+    function renderSentMessage(text, time, fromPersist) {
+      const wrap = document.createElement('div');
+      wrap.className = 'message-wrap sent';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble sent-bubble';
+
+      const msgText = document.createElement('div');
+      msgText.className   = 'msg-text';
+      msgText.textContent = text; // textContent — XSS safe
+
+      const meta = document.createElement('div');
+      meta.className = 'msg-meta sent-meta';
+
+      const timeEl = document.createElement('span');
+      timeEl.className   = 'msg-time';
+      timeEl.textContent = time;
+
+      const tick = document.createElement('span');
+      tick.className   = 'msg-tick';
+      tick.textContent = '✓✓';
+
+      meta.appendChild(timeEl);
+      meta.appendChild(tick);
+      bubble.appendChild(msgText);
+      bubble.appendChild(meta);
+      wrap.appendChild(bubble);
+
+      document.getElementById('sentMessagesContainer').appendChild(wrap);
+    }
+
+    // Load persisted messages when page opens
+    loadPersistedMessages();
+
+
+    // -------------------------------------------------------
+    // SEND MESSAGE
+    // -------------------------------------------------------
+    let hasTrackedConversation = false;
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const text  = input.value.trim();
+      if (!text) return;
+
+      const time = getCurrentTime();
+
+      // Render and persist
+      renderSentMessage(text, time, false);
+      persistMessage(text, time);
+
+      input.value = '';
+      scrollToBottom();
+
+      // Track messages for Social Butterfly badge
+      let messagesSent = parseInt(localStorage.getItem('messagesSent') || '0');
+      localStorage.setItem('messagesSent', (messagesSent + 1).toString());
+
+      // Track conversation once per session
+      if (!hasTrackedConversation) {
+        hasTrackedConversation = true;
+        let count = parseInt(localStorage.getItem('conversationCount') || '0');
+        localStorage.setItem('conversationCount', (count + 1).toString());
+        localStorage.setItem('lastDailyDate', new Date().toDateString());
+      }
+    }
+
+    function getCurrentTime() {
+      const now = new Date();
+      return now.getHours().toString().padStart(2,'0') + ':' +
+             now.getMinutes().toString().padStart(2,'0');
+    }
+
+    function scrollToBottom() {
+      const area = document.getElementById('messagesArea');
+      setTimeout(() => { area.scrollTop = area.scrollHeight; }, 50);
+    }
+
+    window.addEventListener('load', scrollToBottom);
+
+
+    // -------------------------------------------------------
+    // GROUP INFO MODAL
+    // Each member row clickable — opens mini profile
+    // -------------------------------------------------------
+    function openGroupModal() {
+      document.getElementById('modalGroupName').textContent = groupName;
+
+      // Build clickable member rows
+      const membersContainer = document.getElementById('modalMembers');
+      membersContainer.innerHTML = '';
+
+      members.forEach(member => {
+        const row = document.createElement('div');
+        row.className  = 'modal-member-row clickable';
+        row.setAttribute('role', 'button');
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('aria-label', 'View ' + member.name + '\'s profile');
+
+        const flag = document.createElement('span');
+        flag.className   = 'modal-member-flag';
+        flag.textContent = member.flag;
+
+        const info = document.createElement('div');
+        info.className = 'modal-member-info';
+
+        const name = document.createElement('div');
+        name.className   = 'modal-member-name';
+        name.textContent = member.name;
+
+        const uni = document.createElement('div');
+        uni.className   = 'modal-member-uni';
+        uni.textContent = member.uni;
+
+        const chevron = document.createElement('i');
+        chevron.className = 'ph-bold ph-caret-right member-chevron';
+
+        info.appendChild(name);
+        info.appendChild(uni);
+        row.appendChild(flag);
+        row.appendChild(info);
+        row.appendChild(chevron);
+
+        // Click opens member profile modal
+        row.addEventListener('click', () => openMemberProfile(member));
+        row.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openMemberProfile(member);
+  }
+});
+
+        membersContainer.appendChild(row);
+      });
+
+      // "You" row — clicking shows "This is you" modal
+      const youRow = document.createElement('div');
+      youRow.className = 'modal-member-row clickable you-row';
+      youRow.setAttribute('role', 'button');
+      youRow.setAttribute('tabindex', '0');
+
+      const youInfo = document.createElement('div');
+      youInfo.className = 'modal-member-info';
+
+      const youNameEl = document.createElement('div');
+      youNameEl.className   = 'modal-member-name';
+      youNameEl.textContent = myName;
+
+      const youSubEl = document.createElement('div');
+      youSubEl.className   = 'modal-member-uni';
+      youSubEl.textContent = localStorage.getItem('userUni')?.trim() || '';
+
+      const youBadge = document.createElement('span');
+      youBadge.className   = 'you-badge';
+      youBadge.textContent = 'You';
+
+      youInfo.appendChild(youNameEl);
+      youInfo.appendChild(youSubEl);
+      youRow.appendChild(youInfo);
+      youRow.appendChild(youBadge);
+
+      youRow.addEventListener('click', () => {
+        closeModal('groupModal');
+        document.getElementById('itsYouModal').style.display = 'flex';
+      });
+
+      youRow.addEventListener('keydown', e => {
+         if (e.key === 'Enter' || e.key === ' ') {
+             e.preventDefault();
+             closeModal('groupModal');
+             document.getElementById('itsYouModal').style.display = 'flex';
+  }
+});
+
+      membersContainer.appendChild(youRow);
+
+      // Build shared interests
+      const interestsContainer = document.getElementById('modalInterests');
+      interestsContainer.innerHTML = '';
+      interests.forEach(interest => {
+        const tag = document.createElement('span');
+        tag.className   = 'interest-tag';
+        tag.textContent = interest;
+        interestsContainer.appendChild(tag);
+      });
+
+      document.getElementById('groupModal').style.display = 'flex';
+    }
+
+
+    // -------------------------------------------------------
+    // MEMBER PROFILE MODAL
+    // Read-only profile preview for each group member
+    // -------------------------------------------------------
+    function openMemberProfile(member) {
+      // Fill in member details
+      document.getElementById('mpFlag').textContent = member.flag;
+      document.getElementById('mpName').textContent = member.name;
+      document.getElementById('mpSub').textContent  = member.uni + ' · ' + member.country;
+
+      // Get hardcoded profile data for this member
+      // Fallback to generic data if member not in our profile map
+      const profile = memberProfiles[member.name] || {
+        languages: 'English',
+        interests: interests // Use group shared interests as fallback
+      };
+
+      document.getElementById('mpLanguages').textContent = profile.languages;
+
+      // Build interest tags
+      const mpInterests = document.getElementById('mpInterests');
+      mpInterests.innerHTML = '';
+      profile.interests.forEach(interest => {
+        const tag = document.createElement('span');
+        tag.className   = 'interest-tag';
+        tag.textContent = interest;
+        mpInterests.appendChild(tag);
+      });
+
+      // Close group modal first then open member profile
+      closeModal('groupModal');
+      document.getElementById('memberProfileModal').style.display = 'flex';
+    }
+
+
+    // -------------------------------------------------------
+    // LEAVE GROUP
+    // -------------------------------------------------------
+    function leaveGroup() {
+      document.getElementById('dropdownMenu').classList.remove('open');
+      document.getElementById('leaveModal').style.display = 'flex';
+    }
+
+    function confirmLeaveGroup() {
+      // Mark group as left — inbox (chat.html) filters these out
+      localStorage.setItem('leftGroup_' + groupId, 'true');
+
+      // Add to groupMatches so this group never appears again in matching
+      const groupMatches = JSON.parse(localStorage.getItem('groupMatches') || '[]');
+      if (!groupMatches.includes(groupId)) {
+        groupMatches.push(groupId);
+        localStorage.setItem('groupMatches', JSON.stringify(groupMatches));
+      }
+
+      closeModal('leaveModal');
+      showToast('You have left the group.');
+      setTimeout(() => { window.location.href = 'chat.html'; }, 1800);
+    }
+
+
+    // -------------------------------------------------------
+    // DROPDOWN MENU
+    // -------------------------------------------------------
+    function toggleMenu() {
+      document.getElementById('dropdownMenu').classList.toggle('open');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', e => {
+      const menu    = document.getElementById('dropdownMenu');
+      const moreBtn = document.querySelector('.more-btn');
+      if (menu && moreBtn && !menu.contains(e.target) && !moreBtn.contains(e.target)) {
+        menu.classList.remove('open');
+      }
+    });
+
+
+    // -------------------------------------------------------
+    // REPORT — Shows member selection dynamically
+    // -------------------------------------------------------
+    function reportGroup() {
+      document.getElementById('dropdownMenu').classList.remove('open');
+
+      // Build member radio options dynamically
+      const reportMembersEl = document.getElementById('reportMembers');
+      reportMembersEl.innerHTML = '';
+
+      members.forEach(member => {
+        const label = document.createElement('label');
+        label.className = 'report-option';
+
+        const radio = document.createElement('input');
+        radio.type  = 'radio';
+        radio.name  = 'reportMember';
+        radio.value = member.name;
+
+        const text = document.createElement('span');
+        text.textContent = member.flag + ' ' + member.name;
+
+        label.appendChild(radio);
+        label.appendChild(text);
+        reportMembersEl.appendChild(label);
+      });
+
+      document.getElementById('reportModal').style.display = 'flex';
+
+      document.querySelectorAll(
+     'input[name="reportMember"], input[name="reportReason"]'
+     ).forEach(input => {
+        input.checked = false;
+    });
+    }
+
+    function submitReport() {
+      const member = document.querySelector('input[name="reportMember"]:checked');
+      const reason = document.querySelector('input[name="reportReason"]:checked');
+
+      if (!member) { showToast('Please select a member to report'); return; }
+      if (!reason)  { showToast('Please select a reason'); return; }
+
+      closeModal('reportModal');
+      showToast('Report submitted. Our Safety Agent will review it. 🛡️');
+    }
+
+
+    // -------------------------------------------------------
+    // CLOSE MODAL
+    // -------------------------------------------------------
+    function closeModal(modalId) {
+
+        document.getElementById(modalId).style.display = 'none';
+
+        if (modalId === 'memberProfileModal') {
+           document.getElementById('groupModal').style.display = 'flex';
+  }
+
+}
+
+    // Click overlay to close
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
+      });
+    });
+
+    // ESC key closes dropdown and modals
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        document.getElementById('dropdownMenu').classList.remove('open');
+        document.querySelectorAll('.modal-overlay').forEach(m => {
+          m.style.display = 'none';
+        });
+      }
+    });
+
+
+    // -------------------------------------------------------
+    // TOAST NOTIFICATION
+    // -------------------------------------------------------
+    function showToast(message) {
+      const existing = document.getElementById('toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.id          = 'toast';
+      toast.className   = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+  </script>
+
+</body>
+</html>
+
