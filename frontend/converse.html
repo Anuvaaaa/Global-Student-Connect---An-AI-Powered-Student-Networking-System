@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Student Connect — Conversation</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Phosphor Icons via jsDelivr — version locked -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+
+  <!-- Conversation page styles -->
+  <link rel="stylesheet" href="converse.css" />
+</head>
+<body>
+
+  <!-- =====================================================================
+       CHAT HEADER
+       Fixed at top — shows matched person's flag and name
+       Clicking the person info opens their profile modal
+       Name, flag, and other details read from URL params
+  ===================================================================== -->
+  <header class="chat-header">
+
+    <!-- Back to inbox -->
+    <a href="chat.html" class="back-btn" aria-label="Back to inbox">
+      <i class="ph-bold ph-arrow-left"></i>
+    </a>
+
+    <!-- Clickable person info — opens profile modal -->
+    <div class="chat-person" onclick="openProfileModal()" role="button" tabindex="0">
+      <div class="chat-person-flag" id="personFlag">🌍</div>
+      <div class="chat-person-info">
+        <div class="chat-person-name" id="personName">Loading...</div>
+        <!-- Changed from Online to Matched recently — no backend to check real status -->
+        <div class="chat-person-status">
+          <span class="status-dot"></span>
+          Matched recently
+        </div>
+      </div>
+    </div>
+
+    <!-- More options button -->
+    <button type="button" class="more-btn" onclick="toggleMenu()" aria-label="More options">
+      <i class="ph-bold ph-dots-three-vertical"></i>
+    </button>
+
+    <!-- ---------------------------------------------------------------
+         DROPDOWN MENU — Report, Block, End Chat
+    --------------------------------------------------------------- -->
+    <div class="dropdown-menu" id="dropdownMenu">
+
+      <button type="button" class="menu-item" onclick="endChat()">
+        <i class="ph-bold ph-x-circle"></i>
+        End Chat
+      </button>
+
+      <div class="menu-divider"></div>
+
+      <button type="button" class="menu-item report-item" onclick="reportUser()">
+        <i class="ph-bold ph-warning"></i>
+        Report User
+      </button>
+
+      <button type="button" class="menu-item block-item" onclick="blockUser()">
+        <i class="ph-bold ph-prohibit"></i>
+        Block User
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <!-- =====================================================================
+       AUTO TRANSLATE BANNER
+       Replaces the old toggle bar — translation is now controlled
+       entirely from Profile settings, not per-conversation
+       Only shown if auto translate is ON in profile settings
+       Reads translateInto preference from localStorage
+  ===================================================================== -->
+  <div class="translate-banner" id="translateBanner">
+    <i class="ph-bold ph-translate"></i>
+    <span id="translateBannerText">Auto-translating messages to English</span>
+  </div>
+
+
+  <!-- =====================================================================
+       MESSAGES AREA
+       Scrollable — between header/banner and input bar
+  ===================================================================== -->
+  <div class="messages-area" id="messagesArea">
+
+    <div class="date-separator"><span>Today</span></div>
+
+    <!-- ---------------------------------------------------------------
+         HARDCODED RECEIVED MESSAGES
+         Two opening messages from matched person
+         Wording explains context — they just got matched
+         Times are slightly different to look natural
+         In real project messages come from Django WebSocket
+    --------------------------------------------------------------- -->
+
+    <!-- Received message 1 -->
+    <div class="message-wrap received" id="msg-r1">
+      <div class="msg-avatar" id="msgAvatar1">🌍</div>
+      <div class="message-bubble received-bubble">
+        <div class="msg-text" id="msg-r1-text">
+          Hi! We just got matched 😊 Really happy to meet you!
+        </div>
+        <!-- Translated text — hidden until translate clicked or auto-translate on -->
+        <div class="msg-translated" id="msg-r1-translated"></div>
+        <div class="msg-meta">
+          <span class="msg-time">09:14</span>
+          <!-- Translate button — text changes to Translated ✓ after clicking -->
+          <button type="button" class="translate-btn" id="translate-btn-r1" onclick="translateMessage('msg-r1')">
+            <i class="ph-bold ph-translate"></i>
+            Translate
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Received message 2 -->
+    <div class="message-wrap received" id="msg-r2">
+      <div class="msg-avatar" id="msgAvatar2">🌍</div>
+      <div class="message-bubble received-bubble">
+        <div class="msg-text" id="msg-r2-text">
+          What do you study? I'm doing Computer Science 💻 Always looking for people to talk to!
+        </div>
+        <div class="msg-translated" id="msg-r2-translated"></div>
+        <div class="msg-meta">
+          <span class="msg-time">09:15</span>
+          <button type="button" class="translate-btn" id="translate-btn-r2" onclick="translateMessage('msg-r2')">
+            <i class="ph-bold ph-translate"></i>
+            Translate
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- User sent messages injected here by JavaScript -->
+    <div id="sentMessagesContainer"></div>
+
+  </div>
+
+
+  <!-- =====================================================================
+       MESSAGE INPUT BAR
+       Text only — no file or image upload
+  ===================================================================== -->
+  <div class="input-bar">
+    <input
+      type="text"
+      class="message-input"
+      id="messageInput"
+      placeholder="Type a message..."
+      onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendMessage(); }"
+      maxlength="500"
+    />
+    <button type="button" class="send-btn" onclick="sendMessage()" aria-label="Send message">
+      <i class="ph-bold ph-paper-plane-tilt"></i>
+    </button>
+  </div>
+
+
+  <!-- =====================================================================
+       PROFILE MODAL
+       Opens when user clicks on matched person's name/flag in header
+       Shows their university, country, interests, compatibility
+       All data comes from URL params passed by connect.html
+  ===================================================================== -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal profile-modal">
+
+      <div class="modal-header">
+        <div class="modal-title">Match Profile</div>
+        <button type="button" class="modal-close" onclick="closeModal('profileModal')">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <!-- Person header inside modal -->
+      <div class="profile-modal-top">
+        <div class="profile-modal-flag" id="modalFlag">🌍</div>
+        <div class="profile-modal-name" id="modalName">—</div>
+        <div class="profile-modal-sub"  id="modalSub">—</div>
+      </div>
+
+      <!-- Details grid -->
+      <div class="profile-modal-details">
+
+        <div class="profile-detail-item">
+          <i class="ph-bold ph-building"></i>
+          <div>
+            <div class="detail-label">University</div>
+            <div class="detail-value" id="modalUni">—</div>
+          </div>
+        </div>
+
+        <div class="profile-detail-item">
+          <i class="ph-bold ph-globe"></i>
+          <div>
+            <div class="detail-label">Country</div>
+            <div class="detail-value" id="modalCountry">—</div>
+          </div>
+        </div>
+
+        <div class="profile-detail-item">
+          <i class="ph-bold ph-star"></i>
+          <div>
+            <div class="detail-label">Shared Interests</div>
+            <!-- Interests injected as tags by JavaScript -->
+            <div class="detail-interests" id="modalInterests"></div>
+          </div>
+        </div>
+
+        <!-- Compatibility score from match reveal -->
+        <div class="profile-detail-item">
+          <i class="ph-bold ph-chart-bar"></i>
+          <div>
+            <div class="detail-label">Compatibility Score</div>
+            <div class="compatibility-bar-wrap">
+              <div class="mini-compat-bar">
+                <div class="mini-compat-fill" id="modalCompatFill"></div>
+              </div>
+              <div class="mini-compat-score" id="modalScore">—</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <button type="button" class="modal-close-btn" onclick="closeModal('profileModal')">
+        Close
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       REPORT MODAL
+  ===================================================================== -->
+  <div class="modal-overlay" id="reportModal">
+    <div class="modal">
+
+      <div class="modal-header">
+        <div class="modal-title">Report User</div>
+        <button type="button" class="modal-close" onclick="closeModal('reportModal')">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <p class="modal-desc">
+        Please select a reason. Our Safety Agent will review your report.
+      </p>
+
+      <div class="report-options">
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Inappropriate language" />
+          <span>Inappropriate language</span>
+        </label>
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Harassment" />
+          <span>Harassment</span>
+        </label>
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Spam" />
+          <span>Spam</span>
+        </label>
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Fake profile" />
+          <span>Fake profile</span>
+        </label>
+        <label class="report-option">
+          <input type="radio" name="reportReason" value="Other" />
+          <span>Other</span>
+        </label>
+      </div>
+
+      <button type="button" class="modal-submit-btn" onclick="submitReport()">
+        Submit Report
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       BLOCK MODAL
+  ===================================================================== -->
+  <div class="modal-overlay" id="blockModal">
+    <div class="modal">
+
+      <div class="modal-header">
+        <div class="modal-title">Block User</div>
+        <button type="button" class="modal-close" onclick="closeModal('blockModal')">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <p class="modal-desc" id="blockModalDesc">
+        Are you sure you want to block this user?
+        They will no longer be able to match with or message you.
+      </p>
+
+      <div class="modal-btns">
+        <button type="button" class="block-confirm-btn" onclick="confirmBlock()">
+          Block User
+        </button>
+        <button type="button" class="modal-cancel-btn" onclick="closeModal('blockModal')">
+          Cancel
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       END CHAT MODAL
+  ===================================================================== -->
+  <div class="modal-overlay" id="endChatModal">
+    <div class="modal">
+
+      <div class="modal-header">
+        <div class="modal-title">End Chat</div>
+        <button type="button" class="modal-close" onclick="closeModal('endChatModal')">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <p class="modal-desc">
+        Are you sure you want to end this chat?
+        This will unmatch you from this student and remove the conversation. You can no longer text each other.
+      </p>
+
+      <div class="modal-btns">
+        <button type="button" class="end-confirm-btn" onclick="confirmEndChat()">
+          End Chat
+        </button>
+        <button type="button" class="modal-cancel-btn" onclick="closeModal('endChatModal')">
+          Cancel
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       JAVASCRIPT
+  ===================================================================== -->
+  <script>
+
+    // -------------------------------------------------------
+    // READ URL PARAMS
+    // connect.html passes all match details in the URL
+    // Example URL:
+    // converse.html?user=jp_yuki_001&name=Yuki Tanaka
+    // &flag=🇯🇵&uni=Tokyo University&country=Japan
+    // &interests=Music,Coding,Gaming&score=88
+    // -------------------------------------------------------
+    const params      = new URLSearchParams(window.location.search);
+    const userId      = params.get('user')      || 'unknown';
+    const matchName   = decodeURIComponent(params.get('name')      || 'Your Match');
+    const matchFlag   = decodeURIComponent(params.get('flag')      || '🌍');
+    const matchUni    = decodeURIComponent(params.get('uni')       || 'University');
+    const matchCountry= decodeURIComponent(params.get('country')   || 'Unknown');
+    const matchScore  = params.get('score')     || '80';
+    const matchInterests = decodeURIComponent(params.get('interests') || 'Music,Coding')
+      .split(',').map(i => i.trim()).filter(i => i.length > 0);
+
+    // Fill header
+    document.getElementById('personName').textContent = matchName;
+    document.getElementById('personFlag').textContent = matchFlag;
+
+    // Fill message avatars with matched person's flag
+    document.getElementById('msgAvatar1').textContent = matchFlag;
+    document.getElementById('msgAvatar2').textContent = matchFlag;
+
+    // Update page title — Changed from Chat to Conversation
+    document.title = 'Conversation with ' + matchName + ' — Global Student Connect';
+
+
+    // -------------------------------------------------------
+    // AUTO TRANSLATE SETUP
+    // Reads preference from localStorage — set in profile settings
+    // No toggle here — translation is controlled from profile only
+    // -------------------------------------------------------
+    const autoTranslateOn = localStorage.getItem('userAutoTranslate') !== 'false';
+    const translateInto   = localStorage.getItem('translateInto') ||
+                            localStorage.getItem('userLang1') ||
+                            'English';
+
+    // Show or hide the auto translate banner
+const banner = document.getElementById('translateBanner');
+
+const translateButtons =
+    document.querySelectorAll('.translate-btn');
+
+if (autoTranslateOn) {
+
+    banner.style.display = 'flex';
+
+    document.getElementById('translateBannerText').textContent =
+        'Auto-translating messages to ' + translateInto;
+
+    // Hide manual translate buttons
+    translateButtons.forEach(btn => {
+        btn.style.display = 'none';
+    });
+
+    // Auto translate all messages
+    setTimeout(() => {
+        translateMessage('msg-r1', true);
+        translateMessage('msg-r2', true);
+    }, 800);
+
+}
+else {
+
+    banner.style.display = 'none';
+
+    // Show manual translate buttons
+    translateButtons.forEach(btn => {
+        btn.style.display = 'inline-flex';
+    });
+
+}
+
+
+    // -------------------------------------------------------
+    // FAKE TRANSLATIONS
+    // In real project Translation Agent calls translation API
+    // Translations available in common languages
+    // -------------------------------------------------------
+    const fakeTranslations = {
+      'msg-r1': {
+        'Bengali':    'হ্যালো! আমরা এইমাত্র ম্যাচ হয়েছি 😊 তোমার সাথে পরিচিত হয়ে সত্যিই খুশি!',
+        'Hindi':      'नमस्ते! हम अभी मैच हुए 😊 आपसे मिलकर वाकई खुशी हुई!',
+        'Arabic':     'مرحباً! لقد تم توافقنا للتو 😊 سعيد جداً بلقائك!',
+        'Spanish':    '¡Hola! Acabamos de hacer match 😊 ¡Muy contento de conocerte!',
+        'French':     'Salut! On vient juste de se matcher 😊 Vraiment content de te rencontrer!',
+        'Mandarin':   '你好！我们刚刚匹配到了 😊 很高兴认识你！',
+        'Malay':      'Hai! Kita baru sahaja dipadankan 😊 Sangat gembira bertemu dengan awak!',
+        'default':    '[Auto-translated to ' + translateInto + '] Hi! We just got matched 😊 Really happy to meet you!'
+      },
+      'msg-r2': {
+        'Bengali':    'তুমি কী পড়াশোনা করো? আমি কম্পিউটার সায়েন্স করছি 💻 সবসময় কথা বলার মানুষ খুঁজি!',
+        'Hindi':      'आप क्या पढ़ते हैं? मैं कंप्यूटर साइंस कर रहा हूं 💻 हमेशा बात करने के लिए लोगों की तलाश में हूं!',
+        'Arabic':     'ماذا تدرس؟ أنا أدرس علوم الحاسب 💻 أبحث دائماً عن أشخاص للتحدث معهم!',
+        'Spanish':    '¿Qué estudias? Estoy haciendo Informática 💻 ¡Siempre buscando personas con quien hablar!',
+        'French':     'Qu\'est-ce que tu étudies? Je fais de l\'informatique 💻 Je cherche toujours des gens à qui parler!',
+        'Mandarin':   '你学什么专业？我在学计算机科学 💻 总是在找人聊天！',
+        'Malay':      'Apa yang awak belajar? Saya buat Sains Komputer 💻 Selalu mencari orang untuk bercakap!',
+        'default':    '[Auto-translated to ' + translateInto + '] What do you study? I\'m doing Computer Science 💻 Always looking for people to talk to!'
+      }
+    };
+
+    // Translate a received message
+    // isAuto = true means auto-translate triggered it (not user click)
+    function translateMessage(msgId, isAuto) {
+
+      const translatedEl = document.getElementById(msgId + '-translated');
+      const translateBtn = document.getElementById('translate-btn-' + msgId.replace('msg-', ''));
+      if (!translatedEl) return;
+
+      // Get translation for user's preferred language
+      const translations = fakeTranslations[msgId];
+      const translated   = translations[translateInto] || translations['default'];
+
+      // Show translated text
+      translatedEl.textContent = translated;
+      translatedEl.style.display = 'block';
+
+      // FIX: Change button to "Translated ✓" instead of hiding it
+      // More polished UX — user knows translation happened
+      if (!isAuto && translateBtn) {
+
+        translateBtn.innerHTML =
+        '<i class="ph-bold ph-check"></i> Translated ✓';
+
+        translateBtn.classList.add('translated');
+
+        translateBtn.disabled = true;
+
+    }
+
+      // Track translations for Language Bridge badge
+      if (!isAuto) {
+        let used = parseInt(localStorage.getItem('translationsUsed') || '0');
+        localStorage.setItem('translationsUsed', (used + 1).toString());
+      }
+    }
+
+
+    // -------------------------------------------------------
+    // SEND MESSAGE
+    // XSS safe — uses textContent not innerHTML
+    // FIX: Tracks conversationCount properly for missions
+    // -------------------------------------------------------
+    let hasTrackedConversation = false; // Only count once per session
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const text  = input.value.trim();
+      if (!text) return;
+
+      // Build sent message bubble safely using createElement
+      const wrap   = document.createElement('div');
+      wrap.className = 'message-wrap sent';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble sent-bubble';
+
+      const msgText = document.createElement('div');
+      msgText.className   = 'msg-text';
+      msgText.textContent = text; // textContent — XSS safe
+
+      const meta = document.createElement('div');
+      meta.className = 'msg-meta sent-meta';
+
+      const time = document.createElement('span');
+      time.className   = 'msg-time';
+      time.textContent = getCurrentTime();
+
+      const tick = document.createElement('span');
+      tick.className   = 'msg-tick';
+      tick.textContent = '✓✓';
+
+      meta.appendChild(time);
+      meta.appendChild(tick);
+      bubble.appendChild(msgText);
+      bubble.appendChild(meta);
+      wrap.appendChild(bubble);
+
+      document.getElementById('sentMessagesContainer').appendChild(wrap);
+
+      input.value = '';
+      scrollToBottom();
+
+      // Track messages sent for Social Butterfly badge
+      let messagesSent = parseInt(localStorage.getItem('messagesSent') || '0');
+      localStorage.setItem('messagesSent', (messagesSent + 1).toString());
+
+      // FIX: Track conversation count properly for missions
+      // Only count once per conversation session, not per message
+      if (!hasTrackedConversation) {
+        hasTrackedConversation = true;
+        let conversationCount = parseInt(localStorage.getItem('conversationCount') || '0');
+        localStorage.setItem('conversationCount', (conversationCount + 1).toString());
+        // Also mark daily mission as done
+        localStorage.setItem('lastDailyDate', new Date().toDateString());
+      }
+    }
+
+    // Format current time as HH:MM
+    function getCurrentTime() {
+      const now = new Date();
+      return now.getHours().toString().padStart(2, '0') + ':' +
+             now.getMinutes().toString().padStart(2, '0');
+    }
+
+    // Scroll to bottom of messages
+    function scrollToBottom() {
+      const area = document.getElementById('messagesArea');
+      setTimeout(() => { area.scrollTop = area.scrollHeight; }, 50);
+    }
+
+    window.addEventListener('load', scrollToBottom);
+
+
+    // -------------------------------------------------------
+    // PROFILE MODAL
+    // Opens when user clicks matched person's name/flag in header
+    // Shows their details passed via URL params from connect.html
+    // -------------------------------------------------------
+    function openProfileModal() {
+      // Fill modal with matched person's details
+      document.getElementById('modalFlag').textContent    = matchFlag;
+      document.getElementById('modalName').textContent    = matchName;
+      document.getElementById('modalSub').textContent     = matchUni + ' · ' + matchCountry;
+      document.getElementById('modalUni').textContent     = matchUni;
+      document.getElementById('modalCountry').textContent = matchCountry;
+      document.getElementById('modalScore').textContent   = matchScore + '%';
+
+      // Fill compatibility bar
+      document.getElementById('modalCompatFill').style.width = matchScore + '%';
+
+      // Build interest tags safely
+      const interestsContainer = document.getElementById('modalInterests');
+      interestsContainer.innerHTML = '';
+      matchInterests.forEach(interest => {
+        const tag = document.createElement('span');
+        tag.className   = 'interest-tag';
+        tag.textContent = interest;
+        interestsContainer.appendChild(tag);
+      });
+
+      // Show modal
+      document.getElementById('profileModal').style.display = 'flex';
+    }
+
+
+    // -------------------------------------------------------
+    // DROPDOWN MENU
+    // -------------------------------------------------------
+    function toggleMenu() {
+      document.getElementById('dropdownMenu').classList.toggle('open');
+    }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      const menu    = document.getElementById('dropdownMenu');
+      const moreBtn = document.querySelector('.more-btn');
+      if (menu && moreBtn && !menu.contains(e.target) && !moreBtn.contains(e.target)) {
+        menu.classList.remove('open');
+      }
+    });
+
+
+    // -------------------------------------------------------
+    // END CHAT
+    // -------------------------------------------------------
+    function endChat() {
+      document.getElementById('dropdownMenu').classList.remove('open');
+      document.getElementById('endChatModal').style.display = 'flex';
+    }
+
+    function confirmEndChat() {
+
+    // Prototype only
+    localStorage.setItem('chatEnded_' + userId, 'true');
+
+    showToast('Conversation ended. You have been unmatched.');
+
+    setTimeout(() => {
+        window.location.href = 'chat.html';
+    }, 1800);
+
+}
+
+
+    // -------------------------------------------------------
+    // REPORT USER
+    // -------------------------------------------------------
+    function reportUser() {
+      document.getElementById('dropdownMenu').classList.remove('open');
+      document.getElementById('reportModal').style.display = 'flex';
+    }
+
+    function submitReport() {
+      const reason = document.querySelector('input[name="reportReason"]:checked');
+      if (!reason) {
+        showToast('Please select a reason first');
+        return;
+      }
+      closeModal('reportModal');
+      showToast('Report submitted. Our Safety Agent will review it. 🛡️');
+    }
+
+
+    // -------------------------------------------------------
+    // BLOCK USER
+    // -------------------------------------------------------
+    function blockUser() {
+      document.getElementById('dropdownMenu').classList.remove('open');
+      document.getElementById('blockModalDesc').textContent =
+        'Are you sure you want to block ' + matchName + '? ' +
+        'They will no longer be able to match with or send you messages.';
+      document.getElementById('blockModal').style.display = 'flex';
+    }
+
+    function confirmBlock() {
+      closeModal('blockModal');
+      showToast(matchName + ' has been blocked. 🚫');
+      setTimeout(() => { window.location.href = 'chat.html'; }, 2000);
+    }
+
+
+    // -------------------------------------------------------
+    // CLOSE MODAL
+    // -------------------------------------------------------
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+
+    // Click overlay to close
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
+      });
+    });
+
+
+    // -------------------------------------------------------
+    // TOAST NOTIFICATION
+    // -------------------------------------------------------
+    function showToast(message) {
+      const existing = document.getElementById('toast');
+      if (existing) existing.remove();
+
+      const toast = document.createElement('div');
+      toast.id          = 'toast';
+      toast.className   = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+  </script>
+
+</body>
+</html>
+
+
+
+
+
