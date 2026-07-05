@@ -1,0 +1,258 @@
+/* ============================================================
+   GLOBAL STUDENT CONNECT — converse.css
+   Individual Conversation Page Styles
+
+   TABLE OF CONTENTS:
+   1. CHAT HEADER
+   2. DROPDOWN MENU
+   3. AUTO TRANSLATE BANNER
+   4. MESSAGES AREA
+   5. MESSAGE BUBBLES
+   6. PROFILE MODAL
+   7. REPORT / BLOCK / END CHAT MODALS
+   8. DESKTOP RESPONSIVE
+============================================================ */
+
+/* Chat header, dropdown menu, message bubbles/meta, date separator, input bar, modal shell, toast, and shared keyframes now live in shared-chat.css (this file keeps only its page-specific overrides + unique styles) */
+@import url("shared-chat.css");
+
+
+/* ============================================================
+   1. CHAT HEADER
+   Fixed at top — dark indigo bar with back, name, more
+============================================================ */
+
+
+/* Clickable person info area */
+.chat-person {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1; cursor: pointer; padding: 6px 8px;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.chat-person:hover { background: rgba(255,255,255,0.08); }
+
+.chat-person-flag { font-size: 28px; flex-shrink: 0; }
+
+.chat-person-name { font-size: 15px; font-weight: 700; color: white; }
+
+/* Status row */
+.chat-person-status {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: rgba(255,255,255,0.5);
+}
+
+/* Green dot */
+.status-dot {
+  width: 7px; height: 7px;
+  background: #22c55e; border-radius: 50%; flex-shrink: 0;
+}
+
+
+/* ============================================================
+   2. DROPDOWN MENU
+============================================================ */
+
+
+/* shared base in shared-chat.css; this page overrides: color */
+.report-item {
+  color: #f59e0b;
+}
+/* shared base in shared-chat.css; this page overrides: color */
+.report-item i {
+  color: #f59e0b;
+}
+
+.block-item { color: #ef4444; }
+.block-item i { color: #ef4444; }
+
+
+/* ============================================================
+   3. AUTO TRANSLATE BANNER
+   Replaces old toggle bar — informational only
+   Translation controlled from Profile settings
+   Only visible when auto translate is ON
+============================================================ */
+
+/* shared base in shared-chat.css; this page overrides: top, z-index */
+.translate-banner {
+  top: 64px;
+  z-index: 99;
+}
+
+
+/* ============================================================
+   4. MESSAGES AREA
+   Scrollable area between header and input bar
+   Top offset changes depending on whether banner is shown
+============================================================ */
+
+/* shared base in shared-chat.css; this page overrides: top */
+.messages-area {
+  top: 102px;
+}
+
+
+/* shared base in shared-chat.css; this page overrides: background */
+.messages-area::-webkit-scrollbar-thumb {
+  background: #352e88;
+}
+
+/* When banner is hidden — messages start at 64px */
+.messages-area.no-banner { top: 64px; }
+
+
+/* ============================================================
+   5. MESSAGE BUBBLES
+============================================================ */
+
+/* shared base in shared-chat.css; this page overrides: max-width */
+.message-wrap {
+  max-width: 75%;
+}
+
+
+/* Flag avatar next to received messages */
+.msg-avatar { font-size: 22px; flex-shrink: 0; margin-bottom: 4px; }
+
+
+/* shared base in shared-chat.css; this page overrides: border-bottom-left-radius */
+.received-bubble {
+  border-bottom-left-radius: 4px;
+}
+
+
+/* ============================================================
+   6. PROFILE MODAL
+   Opens when user clicks on matched person's header info
+============================================================ */
+
+
+/* Profile modal specific styles */
+.profile-modal { max-width: 360px; }
+
+/* Person flag, name, subtitle at top of modal */
+.profile-modal-top {
+  text-align: center; padding: 8px 0 20px;
+  border-bottom: 1px solid #f0effe; margin-bottom: 16px;
+}
+
+.profile-modal-flag { font-size: 48px; margin-bottom: 10px; }
+
+.profile-modal-name {
+  font-size: 18px; font-weight: 800; color: #1e1560; margin-bottom: 4px;
+}
+
+.profile-modal-sub { font-size: 12px; color: #aaa; }
+
+/* Details list */
+.profile-modal-details {
+  display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;
+}
+
+.profile-detail-item {
+  display: flex; align-items: flex-start; gap: 12px;
+}
+
+.profile-detail-item i {
+  font-size: 18px; color: #3d2fd9; flex-shrink: 0; margin-top: 2px;
+}
+
+.detail-label {
+  font-size: 11px; font-weight: 700; color: #aaa;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+}
+
+.detail-value { font-size: 14px; font-weight: 600; color: #1e1560; }
+
+/* Interest tags inside modal */
+.detail-interests { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+/* shared base in shared-chat.css; this page overrides: font-size, padding */
+.interest-tag {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+/* Mini compatibility bar */
+.compatibility-bar-wrap {
+  display: flex; align-items: center; gap: 10px; margin-top: 4px;
+}
+
+.mini-compat-bar {
+  flex: 1; height: 6px; background: #f0effe;
+  border-radius: 3px; overflow: hidden;
+}
+
+.mini-compat-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3d2fd9, #f5a623);
+  border-radius: 3px; transition: width 0.8s ease;
+}
+
+.mini-compat-score {
+  font-size: 13px; font-weight: 700; color: #3d2fd9; white-space: nowrap;
+}
+
+
+/* ============================================================
+   7. REPORT / BLOCK / END CHAT MODALS
+============================================================ */
+
+
+/* shared base in shared-chat.css; this page overrides: gap */
+.report-options {
+  gap: 10px;
+}
+
+
+.block-confirm-btn {
+  width: 100%; padding: 12px; background: #ef4444; color: white;
+  font-size: 14px; font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border: none; border-radius: 12px; cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.block-confirm-btn:hover { background: #dc2626; }
+
+.end-confirm-btn {
+  width: 100%; padding: 12px; background: #1e1560; color: white;
+  font-size: 14px; font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border: none; border-radius: 12px; cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.end-confirm-btn:hover { background: #160f4a; }
+
+
+/* ============================================================
+   8. DESKTOP RESPONSIVE
+   On desktop center the chat in a card-like column
+============================================================ */
+
+@media (min-width: 769px) {
+
+
+  .chat-header,
+  .translate-banner,
+  .input-bar {
+    max-width: 640px;
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
+    width: 100%;
+    border-radius: 0;
+  }
+
+
+}
+
+@media (max-width: 768px) {
+    /* shared base in shared-chat.css; this page overrides: max-width */
+  .message-wrap {
+    max-width: 85%;
+  }
+}
