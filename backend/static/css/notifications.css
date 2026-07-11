@@ -1,0 +1,271 @@
+/* ============================================================
+   GLOBAL STUDENT CONNECT — notifications.css
+
+   TABLE OF CONTENTS:
+   1. SIDEBAR BOTTOM & BELL
+   2. MAIN CONTENT & COLUMN
+   3. PAGE HEADER
+   4. FILTER TABS
+   5. NOTIFICATION CARDS
+   6. DATE DIVIDERS
+   7. EMPTY STATE
+   8. FLOATING ASSISTANT & PANEL
+   9. MOBILE TOP BAR
+   10. BOTTOM NAV — Mobile only
+   11. MOBILE RESPONSIVE
+============================================================ */
+
+/* Sidebar, nav items, sidebar-bottom/bell, main-content wrapper, floating assistant + chat panel, mobile top bar, and bottom nav now live in shared-sidebar.css (this file keeps only its page-specific overrides + unique styles) */
+@import url("shared-sidebar.css");
+
+
+/* ============================================================
+   1. SIDEBAR BOTTOM & BELL
+============================================================ */
+
+
+.notif-icon.active-bell { color: #f5a623; } /* Active state on this page */
+
+
+/* ============================================================
+   2. MAIN CONTENT & COLUMN
+============================================================ */
+
+
+.notif-column { width: 100%; max-width: 680px; }
+
+
+/* ============================================================
+   3. PAGE HEADER
+============================================================ */
+
+.page-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px; gap: 16px;
+}
+
+.page-title    { font-size: 28px; font-weight: 800; color: #1e1560; margin-bottom: 6px; }
+.page-subtitle { font-size: 14px; color: #888; line-height: 1.6; max-width: 400px; }
+
+.mark-all-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1.5px solid #e0dcff;
+  color: #888; font-size: 13px; font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  padding: 9px 18px; border-radius: 10px;
+  cursor: pointer; white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.mark-all-btn:hover { background: #f0effe; color: #3d2fd9; border-color: #3d2fd9; }
+
+
+/* ============================================================
+   4. FILTER TABS
+============================================================ */
+
+.filter-tabs {
+  display: flex; gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto; scrollbar-width: none;
+}
+
+.filter-tabs::-webkit-scrollbar { display: none; }
+
+.filter-tab {
+  flex-shrink: 0;
+  background: white;
+  border: 1.5px solid #e8e6ff;
+  border-radius: 20px;
+  color: #888; font-size: 12px; font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  padding: 7px 16px; cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.filter-tab:hover  { color: #3d2fd9; border-color: #d4ccff; }
+.filter-tab.active { background: #ede9ff; color: #3d2fd9; border-color: #d4ccff; }
+
+
+/* ============================================================
+   5. NOTIFICATION CARDS
+============================================================ */
+
+.notif-list { display: flex; flex-direction: column; gap: 4px; }
+
+.notif-card {
+  display: flex; align-items: flex-start; gap: 14px;
+  background: white; border: 1px solid #e8e6ff;
+  border-radius: 16px; padding: 16px;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.notif-card:hover {
+  box-shadow: 0 4px 16px rgba(61,47,217,0.08);
+  border-color: #d4ccff;
+}
+
+.notif-card.unread {
+  border-left: 3px solid #3d2fd9;
+  background: #fdfcff;
+}
+
+/* Icon bubble */
+.notif-icon-wrap {
+  flex-shrink: 0;
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+/* Colours per type — matches connect.css palette */
+.icon-match   { background: #ede9ff; color: #3d2fd9; }
+.icon-group   { background: #fff4e0; color: #f5a623; }
+.icon-message { background: #e8fff3; color: #16a34a; }
+.icon-badge   { background: #fffbe8; color: #ca8a04; }
+.icon-mission { background: #fff0f0; color: #ef4444; }
+.icon-system  { background: #f3f4f6; color: #6b7280; }
+
+/* Body */
+.notif-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.notif-title {
+  font-size: 14px; font-weight: 700; color: #1e1560;
+}
+
+.notif-desc {
+  font-size: 13px; color: #666; line-height: 1.5;
+}
+
+.notif-title,
+.notif-desc {
+  overflow-wrap: break-word;
+}
+/* CTA button */
+.notif-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+
+  margin-top: 8px;
+  padding: 7px 16px;
+
+  border-radius: 10px;
+  background: #3d2fd9;
+  color: white;
+
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+
+  text-decoration: none;
+
+  width: fit-content;
+  max-width: 100%;
+
+  text-align: center;
+  white-space: normal;
+
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.notif-cta:hover { background: #2f23b0; transform: translateY(-1px); }
+
+/* Right col */
+.notif-right {
+  display: flex; flex-direction: column;
+  align-items: flex-end; gap: 8px;
+  flex-shrink: 0;
+}
+
+.notif-time {
+  font-size: 11px; color: #aaa; font-weight: 500; white-space: nowrap;
+}
+
+.unread-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #3d2fd9;
+}
+
+
+/* ============================================================
+   6. DATE DIVIDERS
+============================================================ */
+
+.date-divider {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 4px;
+}
+
+.divider-line  { flex: 1; height: 1px; background: #e8e6ff; }
+
+.divider-label {
+  font-size: 11px; font-weight: 700; color: #aaa;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   7. EMPTY STATE
+============================================================ */
+
+.empty-state {
+  display: none;
+  flex-direction: column; align-items: center;
+  text-align: center; padding: 60px 20px; gap: 12px;
+}
+
+.empty-icon  { font-size: 56px; }
+.empty-title { font-size: 20px; font-weight: 800; color: #1e1560; }
+.empty-desc  { font-size: 13px; color: #888; line-height: 1.6; max-width: 280px; }
+
+
+/* ============================================================
+   8. FLOATING ASSISTANT & PANEL
+============================================================ */
+
+
+/* shared base in shared-sidebar.css; this page overrides: max-height */
+.assistant-body {
+  max-height: 280px;
+}
+
+
+/* ============================================================
+   9. MOBILE TOP BAR
+============================================================ */
+
+
+.mobile-bell.active-bell  { color: #f5a623; }
+
+
+/* ============================================================
+   10. BOTTOM NAV — Mobile only
+============================================================ */
+
+
+/* shared base in shared-sidebar.css; this page overrides: text-decoration */
+.bottom-nav-post {
+  text-decoration: none;
+}
+
+
+/* ============================================================
+   11. MOBILE RESPONSIVE
+============================================================ */
+
+@media (max-width: 768px) {
+
+
+  .notif-column { max-width: 100%; }
+
+  .page-header { flex-direction: column; gap: 12px; }
+  .mark-all-btn { align-self: flex-start; }
+
+
+}
