@@ -1,4 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Student Connect</title>
 
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Our stylesheet -->
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/index.css' %}" />
+</head>
+<body>
+
+  <!-- ============================================================
+       MAIN WRAPPER
+       Holds both left and right panels side by side on desktop
+       Stacks top to bottom on mobile
+  ============================================================ -->
+  <div class="page-wrapper">
+
+
+    <!-- ============================================================
+         LEFT SIDE — Brand Story Panel
+         Static content only — no forms or buttons here
+    ============================================================ -->
+    <div class="brand-panel">
+
+      <!-- Platform wordmark -->
+      <div class="brand-logo">
+        🌍 Global Student Connect
+        <!-- Prototype badge — tells reviewers this is v1 -->
+        <span class="prototype-badge">Prototype v1.0</span>
+      </div>
+
+      <!-- Main headline -->
+      <h1 class="brand-headline">
+        Meet students from <span class="highlight">every corner</span> of the
 <!DOCTYPE html>
 <html lang="en">
 <head>
