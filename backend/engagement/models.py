@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.db import models
 
-
 class Notification(models.Model):
     TYPE_CHOICES = [
         ('match', 'match'), ('group', 'group'), ('message', 'message'),
