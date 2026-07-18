@@ -1,0 +1,127 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Student Connect{% block title_suffix %}{% endblock %}</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Phosphor Icons via jsDelivr — version locked -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+
+  <!-- Shared base styles for conversation pages -->
+  <link rel="stylesheet" href="{% static 'css/shared-chat.css' %}" />
+
+  <!-- Page-specific styles -->
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- =====================================================================
+       CHAT HEADER
+       Person info (converse.html) or group info (group_converse.html) —
+       different enough between the two that each page supplies its own,
+       rather than trying to force a single shared shape here.
+  ===================================================================== -->
+  {% block chat_header %}{% endblock %}
+
+
+  <!-- =====================================================================
+       AUTO TRANSLATE BANNER
+       Identical markup on both pages — shown/hidden via JS based on the
+       user's translate setting (page-specific JS controls this)
+  ===================================================================== -->
+  <div class="translate-banner" id="translateBanner">
+    <i class="ph-bold ph-translate"></i>
+    <span id="translateBannerText">Auto-translating messages to English</span>
+  </div>
+
+
+  <!-- =====================================================================
+       MESSAGES AREA — page-specific (seed messages differ)
+  ===================================================================== -->
+  {% block content %}{% endblock %}
+
+
+  <!-- =====================================================================
+       MESSAGE INPUT BAR
+       Identical shell — only the placeholder text differs
+  ===================================================================== -->
+  <div class="input-bar">
+    <input
+      type="text"
+      class="message-input"
+      id="messageInput"
+      placeholder="{% block input_placeholder %}Type a message...{% endblock %}"
+      onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendMessage(); }"
+      maxlength="500"
+    />
+    <button type="button" class="send-btn" onclick="sendMessage()" aria-label="Send message">
+      <i class="ph-bold ph-paper-plane-tilt"></i>
+    </button>
+  </div>
+
+
+  <!-- =====================================================================
+       PAGE-SPECIFIC MODALS
+       (profile/report/block/end-chat on converse.html;
+        group/member-profile/its-you/leave/report on group_converse.html)
+  ===================================================================== -->
+  {% block modals %}{% endblock %}
+
+
+  <!-- =====================================================================
+       SHARED JAVASCRIPT
+       Identical across both conversation pages. group_converse.html
+       overrides closeModal() in its own extra_js block since it needs
+       extra logic (reopening the group modal after closing a member
+       profile) — the later script tag wins, so that's safe to do.
+  ===================================================================== -->
+  <script>
+
+    function getCurrentTime() {
+      const now = new Date();
+      return now.getHours().toString().padStart(2, '0') + ':' +
+             now.getMinutes().toString().padStart(2, '0');
+    }
+
+    function scrollToBottom() {
+      const area = document.getElementById('messagesArea');
+      setTimeout(() => { area.scrollTop = area.scrollHeight; }, 50);
+    }
+
+    function toggleMenu() {
+      document.getElementById('dropdownMenu').classList.toggle('open');
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+
+    function showToast(message) {
+      const existing = document.getElementById('toast');
+      if (existing) existing.remove();
+
+      const toast = document.createElement('div');
+      toast.id          = 'toast';
+      toast.className   = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+  </script>
+
+  <!-- Page-specific JavaScript -->
+  {% block extra_js %}{% endblock %}
+
+</body>
+</html>
