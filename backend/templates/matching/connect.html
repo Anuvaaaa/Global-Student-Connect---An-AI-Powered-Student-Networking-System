@@ -1,0 +1,1127 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title_suffix %} — Connect{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/connect.css' %}" />
+{% endblock %}
+
+{% block assistant_body %}
+<p class="assistant-intro">Hi! Ask me anything about matching 👋</p>
+      <div class="assistant-chips">
+        <button type="button" class="chip" onclick="askQuestion('How does matching work?')">How does matching work?</button>
+        <button type="button" class="chip" onclick="askQuestion('What is group matching?')">What is group matching?</button>
+        <button type="button" class="chip" onclick="askQuestion('How is compatibility calculated?')">How is compatibility calculated?</button>
+      </div>
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="connect-column">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <h1 class="page-title">Find Your People</h1>
+        <p class="page-subtitle">
+          Our Matching Agent connects you with compatible students
+          from universities around the world
+        </p>
+      </div>
+
+      <!-- -------------------------------------------------------------------
+           STATS ROW
+           Hardcoded for prototype — animates on load
+           In real project values come from Django database
+      ------------------------------------------------------------------- -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-number" id="stat-connected">0</div>
+          <div class="stat-label">students connected today</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-card">
+          <div class="stat-number" id="stat-time">0</div>
+          <div class="stat-label">average match time</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-card">
+          <div class="stat-number stat-text" id="stat-interest">—</div>
+          <div class="stat-label">top interest today</div>
+        </div>
+      </div>
+
+      <!-- -------------------------------------------------------------------
+           ACTION CARDS
+      ------------------------------------------------------------------- -->
+      <div class="action-cards">
+
+        <!-- Find a Friend -->
+        <div class="action-card">
+          <div class="action-icon friend-icon">
+            <i class="ph-bold ph-user-plus"></i>
+          </div>
+          <h2 class="action-title">Find a Friend</h2>
+          <p class="action-desc">
+            Get matched 1-to-1 with a compatible student based on
+            your interests and language preferences
+          </p>
+          <div class="action-tags">
+            <span class="action-tag">🎯 Interest based</span>
+            <span class="action-tag">🌐 Language matched</span>
+            <span class="action-tag">⚡ Instant match</span>
+          </div>
+          <button
+            type="button"
+            class="action-btn friend-btn"
+            id="findFriendBtn"
+            aria-busy="false"
+            onclick="startMatching('friend')"
+          >
+            Find a Friend
+            <i class="ph-bold ph-arrow-right"></i>
+          </button>
+        </div>
+
+        <!-- Join a Group -->
+        <div class="action-card">
+          <div class="action-icon group-icon">
+            <i class="ph-bold ph-users-three"></i>
+          </div>
+          <h2 class="action-title">Join a Group</h2>
+          <p class="action-desc">
+            Be placed into a small discussion group with
+            3 to 4 compatible students for group conversation
+          </p>
+          <div class="action-tags">
+            <span class="action-tag">👥 3-4 students</span>
+            <span class="action-tag">🤝 Compatible group</span>
+            <span class="action-tag">💬 Group chat</span>
+          </div>
+          <button
+            type="button"
+            class="action-btn group-btn"
+            id="joinGroupBtn"
+            aria-busy="false"
+            onclick="startMatching('group')"
+          >
+            Join a Group
+            <i class="ph-bold ph-arrow-right"></i>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- -------------------------------------------------------------------
+           HOW IT WORKS
+      ------------------------------------------------------------------- -->
+      <div class="how-it-works">
+        <h3 class="how-title">How it works</h3>
+        <div class="how-steps">
+
+          <div class="how-step">
+            <div class="how-number">1</div>
+            <div class="how-text">
+              <div class="how-step-title">You click Find</div>
+              <div class="how-step-desc">The Matching Agent reads your profile and interests</div>
+            </div>
+          </div>
+
+          <div class="how-arrow"><i class="ph-bold ph-arrow-right"></i></div>
+
+          <div class="how-step">
+            <div class="how-number">2</div>
+            <div class="how-text">
+              <div class="how-step-title">Request sent</div>
+              <div class="how-step-desc">A compatible match receives your anonymous request</div>
+            </div>
+          </div>
+
+          <div class="how-arrow"><i class="ph-bold ph-arrow-right"></i></div>
+
+          <div class="how-step">
+            <div class="how-number">3</div>
+            <div class="how-text">
+              <div class="how-step-title">They accept</div>
+              <div class="how-step-desc">Both revealed — a private chat opens instantly</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+{% endblock %}
+
+
+{% block modals %}
+  <!-- =====================================================================
+       MATCHING ANIMATION OVERLAY
+  ===================================================================== -->
+  <div class="matching-overlay" id="matchingOverlay">
+    <div class="matching-box">
+
+      <div class="matching-visual">
+        <div class="center-dot"></div>
+        <div class="orbit orbit-1"><div class="orbit-dot"></div></div>
+        <div class="orbit orbit-2"><div class="orbit-dot"></div></div>
+        <div class="orbit orbit-3"><div class="orbit-dot"></div></div>
+      </div>
+
+      <div class="matching-status" id="matchingStatus">Initializing...</div>
+      <div class="matching-log"   id="matchingLog"></div>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       WAITING OVERLAY
+       Anonymous — no identity revealed yet
+       Mystery avatar with question mark
+  ===================================================================== -->
+  <div class="result-overlay" id="waitingOverlay">
+    <div class="result-card waiting-card">
+
+      <div class="waiting-header">
+        <div class="waiting-title">Match Request Sent! 🎯</div>
+        <div class="waiting-subtitle">Waiting for response...</div>
+      </div>
+
+      <!-- Mystery avatar — identity hidden until acceptance -->
+      <div class="mystery-avatar">
+        <i class="ph-bold ph-user-circle"></i>
+        <div class="mystery-question">?</div>
+      </div>
+
+      <p class="waiting-note">
+        A compatible student has received your request.
+        Their identity will be revealed when they accept!
+      </p>
+
+      <!-- Animated bouncing dots -->
+      <div class="waiting-dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+
+      <!-- Live waiting timer -->
+      <div class="waiting-timer" id="waitingTimerDisplay">0s</div>
+
+      <button type="button" class="cancel-btn" id="cancelBtn" onclick="cancelRequest()">
+        Cancel Request
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       REVEAL OVERLAY
+       Shown after acceptance — dramatic reveal animation
+       Identity shown for the first time here — element of surprise!
+  ===================================================================== -->
+  <div class="result-overlay" id="revealOverlay">
+    <div class="result-card reveal-card">
+
+      <!-- Celebration header -->
+      <div class="reveal-header">
+        <div class="reveal-emoji">🎉</div>
+        <div class="reveal-title">Someone accepted!</div>
+        <div class="reveal-subtitle">Your match has been revealed</div>
+      </div>
+
+      <!-- ---------------------------------------------------------------
+           REVEAL ANIMATION SECTION
+           Avatar and name animate in with dramatic effect
+           Classes added by JS to trigger CSS animations
+      --------------------------------------------------------------- -->
+      <div class="reveal-identity" id="revealIdentity">
+
+        <!-- Flag/avatar — scales in with glow -->
+        <div class="reveal-avatar-wrap">
+          <div class="reveal-avatar" id="revealAvatar">🎭</div>
+          <!-- Glow ring that pulses on reveal -->
+          <div class="reveal-glow"></div>
+        </div>
+
+        <!-- Name and uni fade up after avatar -->
+        <div class="reveal-name-wrap">
+          <div class="reveal-name" id="revealName">—</div>
+          <div class="reveal-uni"  id="revealUni">—</div>
+        </div>
+
+      </div>
+
+      <!-- Shared interests -->
+      <div class="shared-interests">
+        <div class="shared-label">Shared interests</div>
+        <div class="shared-tags" id="sharedTags"></div>
+      </div>
+
+      <!-- Compatibility bar -->
+      <div class="compatibility">
+        <div class="compatibility-label">Compatibility Score</div>
+        <div class="compatibility-bar">
+          <div class="compatibility-fill" id="compatFill"></div>
+        </div>
+        <div class="compatibility-percent" id="compatPercent">0%</div>
+      </div>
+
+      <!-- Start chatting — URL includes user ID for converse.html to use -->
+      <a href="#" class="start-chat-btn" id="startChatBtn">
+        Start Chatting
+        <i class="ph-bold ph-chat-circle"></i>
+      </a>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       GROUP REVEAL OVERLAY
+  ===================================================================== -->
+  <div class="result-overlay" id="groupRevealOverlay">
+    <div class="result-card reveal-card">
+
+      <div class="reveal-header">
+        <div class="reveal-emoji">👥</div>
+        <div class="reveal-title">Group Found!</div>
+        <div class="reveal-subtitle" id="groupName">—</div>
+      </div>
+
+      <div class="group-members" id="groupMembers"></div>
+
+      <div class="shared-interests">
+        <div class="shared-label">Group interests</div>
+        <div class="shared-tags" id="groupSharedTags"></div>
+      </div>
+
+      <!-- Group chat URL also includes group ID -->
+      <a href="#" class="start-chat-btn" id="startGroupChatBtn">
+        Enter Group Chat
+        <i class="ph-bold ph-chat-circle"></i>
+      </a>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       DECLINE OVERLAY
+  ===================================================================== -->
+  <div class="result-overlay" id="declineOverlay">
+    <div class="result-card decline-card">
+
+      <div class="decline-emoji">😔</div>
+      <div class="decline-title">No Match Found</div>
+      <div class="decline-msg">
+        Couldn't find a friend at the moment.
+        Students may be busy or unavailable right now.
+      </div>
+      <div class="decline-note">
+        Don't worry — new students are always joining.
+        Try again in a moment!
+      </div>
+
+      <div class="decline-btns">
+        <button type="button" class="try-again-btn" onclick="tryAgain()">
+          <i class="ph-bold ph-arrow-clockwise"></i>
+          Try Again
+        </button>
+        <button type="button" class="join-group-btn" onclick="startMatching('group')">
+          Join a Group Instead
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       NO MORE MATCHES OVERLAY
+  ===================================================================== -->
+  <div class="result-overlay" id="noMatchOverlay">
+    <div class="result-card decline-card">
+      <div class="decline-emoji">🕐</div>
+      <div class="decline-title">No New Matches</div>
+      <div class="decline-msg">
+        You've connected with all available students right now.
+        Check back later for new matches!
+      </div>
+      <div class="decline-note">
+        In the full platform, new students join daily
+        so there's always someone new to meet.
+      </div>
+      <a href="/connect/" class="try-again-btn" style="text-decoration:none; justify-content:center;">
+        Back to Connect
+      </a>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+     INCOMING MATCHES MODAL
+===================================================================== -->
+<div class="result-overlay" id="incomingMatchesOverlay" onclick="closeIncomingMatches(event)">
+  <div class="result-card incoming-card" id="incomingCard">
+
+    <!-- Header -->
+    <div class="incoming-header">
+      <div class="incoming-title">
+        <i class="ph-bold ph-handshake"></i>
+        Incoming Requests
+      </div>
+      <button type="button" class="incoming-close" onclick="closeIncomingMatches()" aria-label="Close">
+        <i class="ph-bold ph-x"></i>
+      </button>
+    </div>
+
+    <!-- Counter pill -->
+    <div class="incoming-counter">
+      <span id="incomingCardCount">2</span> request(s) waiting
+    </div>
+
+    <!-- Request card body -->
+    <div class="incoming-request-body" id="incomingRequestBody">
+
+      <!-- Avatar + name -->
+      <div class="incoming-avatar-row">
+        <div class="incoming-avatar" id="incomingAvatar">🎭</div>
+        <div class="incoming-identity">
+          <div class="incoming-name"    id="incomingName">—</div>
+          <div class="incoming-meta"    id="incomingMeta">—</div>
+        </div>
+      </div>
+
+      <!-- Details grid -->
+      <div class="incoming-details">
+        <div class="incoming-detail-row">
+          <i class="ph-bold ph-buildings"></i>
+          <span id="incomingUni">—</span>
+        </div>
+        <div class="incoming-detail-row">
+          <i class="ph-bold ph-globe"></i>
+          <span id="incomingCountry">—</span>
+        </div>
+        <div class="incoming-detail-row">
+          <i class="ph-bold ph-translate"></i>
+          <span id="incomingLanguages">—</span>
+        </div>
+      </div>
+
+      <!-- Interests -->
+      <div class="incoming-interests-label">Interests</div>
+      <div class="incoming-interests" id="incomingInterests"></div>
+
+      <!-- Buttons -->
+      <div class="incoming-actions">
+        <button type="button" class="incoming-decline-btn" onclick="handleIncomingDecline()">
+          <i class="ph-bold ph-x-circle"></i>
+          Decline
+        </button>
+        <button type="button" class="incoming-accept-btn" onclick="handleIncomingAccept()">
+          <i class="ph-bold ph-check-circle"></i>
+          Accept
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Empty state (shown when all requests handled) -->
+    <div class="incoming-empty" id="incomingEmpty" style="display:none;">
+      <div class="incoming-empty-icon">🎉</div>
+      <div class="incoming-empty-text">All caught up!</div>
+      <div class="incoming-empty-sub">No more incoming requests.</div>
+    </div>
+
+  </div>
+</div>
+
+  <!-- =====================================================================
+     INCOMING MATCHES BADGE
+===================================================================== -->
+<div class="incoming-matches-wrap">
+  <button type="button" class="incoming-matches-btn" id="incomingMatchesBtn" onclick="openIncomingMatches()" aria-label="Incoming match requests">
+    <i class="ph-bold ph-handshake"></i>
+  </button>
+  <span class="incoming-count" id="incomingCount">2</span>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    // -------------------------------------------------------
+// INCOMING MATCHES
+// Fake queue of people who "sent you" a match request
+// -------------------------------------------------------
+const incomingRequests = [
+  {
+    id: 'in_priya_002',
+    name: 'Priya Sharma',
+    flag: '🇮🇳',
+    uni: 'IIT Delhi',
+    country: 'India',
+    languages: 'Hindi, English',
+    interests: ['Reading', 'Photography', 'Music']
+  },
+  {
+    id: 'kr_jiyeon_010',
+    name: 'Jiyeon Park',
+    flag: '🇰🇷',
+    uni: 'Seoul National University',
+    country: 'South Korea',
+    languages: 'Korean, English',
+    interests: ['Music', 'Art & Design', 'Gaming']
+  }
+];
+
+let incomingQueue = [...incomingRequests];
+let currentIncoming = null;
+
+function updateIncomingBadge() {
+  const btn   = document.getElementById('incomingMatchesBtn');
+  const count = document.getElementById('incomingCount');
+  if (!btn || !count) return;
+  count.textContent    = incomingQueue.length;
+  btn.style.display    = incomingQueue.length > 0 ? 'flex' : 'none';
+}
+
+function openIncomingMatches() {
+  if (incomingQueue.length === 0) return;
+  currentIncoming = incomingQueue[0];
+  renderIncomingCard();
+  document.getElementById('incomingMatchesOverlay').style.display = 'flex';
+}
+
+function closeIncomingMatches(e) {
+  // Close only if clicking the backdrop, not the card itself
+  if (e && e.target !== document.getElementById('incomingMatchesOverlay')) return;
+  document.getElementById('incomingMatchesOverlay').style.display = 'none';
+}
+
+function renderIncomingCard() {
+  const r = currentIncoming;
+  document.getElementById('incomingAvatar').textContent    = r.flag;
+  document.getElementById('incomingName').textContent      = r.name;
+  document.getElementById('incomingMeta').textContent      = r.uni + ' · ' + r.country;
+  document.getElementById('incomingUni').textContent       = r.uni;
+  document.getElementById('incomingCountry').textContent   = r.country;
+  document.getElementById('incomingLanguages').textContent = r.languages;
+  document.getElementById('incomingCardCount').textContent = incomingQueue.length;
+
+  // Build interest tags
+  const container = document.getElementById('incomingInterests');
+  container.innerHTML = '';
+  r.interests.forEach(interest => {
+    const tag = document.createElement('span');
+    tag.className   = 'shared-tag';
+    tag.textContent = interest;
+    container.appendChild(tag);
+  });
+
+  document.getElementById('incomingRequestBody').style.display = 'block';
+  document.getElementById('incomingEmpty').style.display       = 'none';
+}
+
+function handleIncomingAccept() {
+  const r = currentIncoming;
+
+  // Save to chat inbox in localStorage (chat.html reads this)
+  const chats = JSON.parse(localStorage.getItem('chatInbox') || '[]');
+  if (!chats.find(c => c.id === r.id)) {
+    chats.unshift({
+      id:       r.id,
+      name:     r.name,
+      flag:     r.flag,
+      uni:      r.uni,
+      country:  r.country,
+      lastMsg:  'You are now connected! Say hello 👋',
+      time:     'Just now',
+      unread:   1
+    });
+    localStorage.setItem('chatInbox', JSON.stringify(chats));
+  }
+
+
+  // Save to friendMatches so they don't appear again in Find a Friend
+const fm = JSON.parse(localStorage.getItem('friendMatches') || '[]');
+if (!fm.includes(r.id)) { fm.push(r.id); localStorage.setItem('friendMatches', JSON.stringify(fm)); }
+
+// Remove from queue
+incomingQueue.shift();
+updateIncomingBadge();
+
+  // Navigate to chat
+  window.location.href = '/converse/?' +
+    'user='    + encodeURIComponent(r.id) +
+    '&name='   + encodeURIComponent(r.name) +
+    '&flag='   + encodeURIComponent(r.flag) +
+    '&uni='    + encodeURIComponent(r.uni) +
+    '&country='+ encodeURIComponent(r.country);
+}
+
+function handleIncomingDecline() {
+  // Remove current from queue
+  incomingQueue.shift();
+  updateIncomingBadge();
+
+  if (incomingQueue.length > 0) {
+    // Show next request
+    currentIncoming = incomingQueue[0];
+    renderIncomingCard();
+  } else {
+    // Show empty state
+    document.getElementById('incomingRequestBody').style.display = 'none';
+    document.getElementById('incomingEmpty').style.display       = 'block';
+  }
+}
+
+// Init badge on page load
+updateIncomingBadge();
+
+
+    // -------------------------------------------------------
+    // STATS COUNTER ANIMATION
+    // -------------------------------------------------------
+    function animateCount(elementId, target, duration) {
+      const el   = document.getElementById(elementId);
+      const step = target / (duration / 16);
+      let current = 0;
+      const timer = setInterval(() => {
+        current += step;
+        if (current >= target) { current = target; clearInterval(timer); }
+        el.textContent = Math.floor(current).toLocaleString();
+      }, 16);
+    }
+
+    window.addEventListener('load', () => {
+      animateCount('stat-connected', 2400, 1500);
+      setTimeout(() => { document.getElementById('stat-time').textContent = '8s'; }, 800);
+      setTimeout(() => { document.getElementById('stat-interest').textContent = 'Music 🎵'; }, 1000);
+    });
+
+
+    // -------------------------------------------------------
+    // FAKE MATCH DATA
+    // Gender field for same-gender matching (silent in UI)
+    // In real project Django filters by gender in the DB query
+    // -------------------------------------------------------
+    const fakeMatches = [
+      { id: 'jp_yuki_001',    name: 'Yuki Tanaka',    uni: 'Tokyo University',   country: 'Japan',     flag: '🇯🇵', gender: 'Female', interests: ['Music', 'Coding', 'Gaming'] },
+      { id: 'in_priya_002',   name: 'Priya Sharma',   uni: 'IIT Delhi',          country: 'India',     flag: '🇮🇳', gender: 'Female', interests: ['Reading', 'Photography', 'Music'] },
+      { id: 'br_lucas_003',   name: 'Lucas Mendes',   uni: 'USP',                country: 'Brazil',    flag: '🇧🇷', gender: 'Male',   interests: ['Football', 'Coding', 'Travel'] },
+      { id: 'fr_camille_004', name: 'Camille Dubois', uni: 'Sorbonne',           country: 'France',    flag: '🇫🇷', gender: 'Female', interests: ['Art & Design', 'Travel', 'Photography'] },
+      { id: 'de_lukas_005',   name: 'Lukas Bauer',    uni: 'TU Munich',          country: 'Germany',   flag: '🇩🇪', gender: 'Male',   interests: ['Coding', 'Gaming', 'Reading'] },
+      { id: 'pk_hassan_006',  name: 'Hassan Ali',     uni: 'LUMS',               country: 'Pakistan',  flag: '🇵🇰', gender: 'Male',   interests: ['Cricket', 'Coding', 'Travel'] },
+      { id: 'mx_sofia_007',   name: 'Sofia Reyes',    uni: 'UNAM',               country: 'Mexico',    flag: '🇲🇽', gender: 'Female', interests: ['Art & Design', 'Music', 'Travel'] },
+      { id: 'ca_aiden_008',   name: 'Aiden Park',     uni: 'UBC',                country: 'Canada',    flag: '🇨🇦', gender: 'Male',   interests: ['Gaming', 'Cooking', 'Music'] },
+      { id: 'ng_chidi_009',   name: 'Chidi Okafor',   uni: 'University of Lagos',country: 'Nigeria',   flag: '🇳🇬', gender: 'Male',   interests: ['Football', 'Music', 'Photography'] },
+      { id: 'kr_jiyeon_010',  name: 'Jiyeon Park',    uni: 'Seoul National',     country: 'South Korea',flag: '🇰🇷', gender: 'Female', interests: ['Music', 'Art & Design', 'Gaming'] }
+    ];
+
+   const fakeGroups = [
+  {
+    id: 'group_tech_001',
+    name: 'Global Tech Enthusiasts',
+    gender: 'Male',
+    members: [
+      { name: 'Rafi Khan', uni: 'BUET', country: 'Bangladesh', flag: '🇧🇩' },
+      { name: 'Lukas Bauer', uni: 'TU Munich', country: 'Germany', flag: '🇩🇪' },
+      { name: 'Hassan Ali', uni: 'LUMS', country: 'Pakistan', flag: '🇵🇰' }
+    ],
+    sharedInterests: ['Coding', 'Gaming']
+  },
+  {
+    id: 'group_creative_002',
+    name: 'Creative Minds',
+    gender: 'Female',
+    members: [
+      { name: 'Sofia Reyes', uni: 'UNAM', country: 'Mexico', flag: '🇲🇽' },
+      { name: 'Aiden Park', uni: 'UBC', country: 'Canada', flag: '🇨🇦' },
+      { name: 'Camille Dubois', uni: 'Sorbonne', country: 'France', flag: '🇫🇷' }
+    ],
+    sharedInterests: ['Art & Design', 'Music']
+  }
+];
+
+
+    // -------------------------------------------------------
+    // ALREADY MATCHED TRACKING
+    // FIX: separate arrays for friends and groups
+    // Prevents group joins from triggering First Friend badge
+    // -------------------------------------------------------
+    function getFriendMatchedList() {
+      return JSON.parse(localStorage.getItem('friendMatches') || '[]');
+    }
+
+    function getGroupMatchedList() {
+      return JSON.parse(localStorage.getItem('groupMatches') || '[]');
+    }
+
+    function saveToFriendList(id) {
+      const list = getFriendMatchedList();
+      if (!list.includes(id)) {
+        list.push(id);
+        localStorage.setItem('friendMatches', JSON.stringify(list));
+      }
+    }
+
+    function saveToGroupList(id) {
+      const list = getGroupMatchedList();
+      if (!list.includes(id)) {
+        list.push(id);
+        localStorage.setItem('groupMatches', JSON.stringify(list));
+      }
+    }
+
+    // Filter by same gender AND not already friend-matched
+    // Gender matching is invisible in UI — handled silently here
+    function getAvailableMatches() {
+      const matched    = getFriendMatchedList();
+      const userGender = localStorage.getItem('userGender') || 'Male';
+      return fakeMatches.filter(m =>
+        m.gender === userGender &&
+        !matched.includes(m.id)
+      );
+    }
+
+    function getAvailableGroups() {
+  const matched = getGroupMatchedList();
+  const userGender = localStorage.getItem('userGender') || 'Male';
+
+  return fakeGroups.filter(g =>
+    g.gender === userGender &&
+    !matched.includes(g.id)
+  );
+}
+
+
+    // -------------------------------------------------------
+    // STATE VARIABLES
+    // -------------------------------------------------------
+    let isMatching     = false;
+    let matchingType   = 'friend';
+    let currentMatch   = null;
+    let waitingActive  = false;
+    let waitingCounter = null; // Interval for the timer display
+
+
+    // -------------------------------------------------------
+    // MATCHING ANIMATION MESSAGES
+    // -------------------------------------------------------
+    const friendMessages = [
+      'Scanning your profile...',
+      'Analyzing your interests...',
+      'Checking compatibility...',
+      'Match found! Sending request...',
+      'Request sent! ✅'
+    ];
+
+    const groupMessages = [
+      'Scanning your profile...',
+      'Searching for compatible students...',
+      'Forming group by shared interests...',
+      'Group found! ✅'
+    ];
+
+
+    // -------------------------------------------------------
+    // START MATCHING
+    // -------------------------------------------------------
+    function startMatching(type) {
+      if (isMatching) return;
+      isMatching   = true;
+      matchingType = type;
+
+      document.getElementById('findFriendBtn').setAttribute('aria-busy', 'true');
+      document.getElementById('joinGroupBtn').setAttribute('aria-busy',  'true');
+
+      hideAllOverlays();
+      document.getElementById('matchingLog').innerHTML      = '';
+      document.getElementById('matchingStatus').textContent = 'Initializing...';
+      document.getElementById('matchingOverlay').style.display = 'flex';
+
+      const messages = type === 'friend' ? friendMessages : groupMessages;
+
+      let delay = 0;
+      messages.forEach((msg, index) => {
+        setTimeout(() => {
+          document.getElementById('matchingStatus').textContent = msg;
+          addLogMessage(msg);
+
+          if (index === messages.length - 1) {
+            setTimeout(() => {
+              document.getElementById('matchingOverlay').style.display = 'none';
+              if (type === 'group') {
+                showGroupResult();
+              } else {
+                showWaitingScreen();
+              }
+            }, 800);
+          }
+        }, delay);
+        delay += 900;
+      });
+    }
+
+    function addLogMessage(text) {
+      const log = document.getElementById('matchingLog');
+      const msg = document.createElement('div');
+      msg.className   = 'log-message';
+      msg.textContent = text;
+      log.appendChild(msg);
+      log.scrollTop = log.scrollHeight;
+    }
+
+
+    // -------------------------------------------------------
+    // WAITING SCREEN
+    // Anonymous — identity hidden until accepted
+    // -------------------------------------------------------
+    function showWaitingScreen() {
+      const available = getAvailableMatches();
+
+      if (available.length === 0) {
+        document.getElementById('noMatchOverlay').style.display = 'flex';
+        resetMatchingLock();
+        return;
+      }
+
+      // Pick match silently — user doesn't see who yet
+      currentMatch  = available[Math.floor(Math.random() * available.length)];
+      waitingActive = true;
+
+      // Start live timer display
+      let seconds = 0;
+      document.getElementById('waitingTimerDisplay').textContent = '0s';
+      waitingCounter = setInterval(() => {
+        seconds++;
+        document.getElementById('waitingTimerDisplay').textContent = seconds + 's';
+      }, 1000);
+
+      // Show waiting overlay and focus cancel button for accessibility
+      document.getElementById('waitingOverlay').style.display = 'flex';
+      setTimeout(() => {
+        document.getElementById('cancelBtn').focus();
+      }, 100);
+
+      // FIX: Save timer ID to window so keyboard shortcuts can cancel it
+      // 80% accept, 20% decline — realistic for demo
+      // Can be overridden by pressing A (accept) or D (decline)
+      const delay    = 4000 + Math.random() * 3000;
+      const accepted = Math.random() < 0.8;
+
+      window._autoResolveTimer = setTimeout(() => {
+        if (!waitingActive) return;
+        if (accepted) {
+          acceptMatch();
+        } else {
+          declineMatch();
+        }
+      }, delay);
+    }
+
+
+    // -------------------------------------------------------
+    // ACCEPT MATCH
+    // Triggered automatically or by pressing A during demo
+    // This is the big reveal moment!
+    // -------------------------------------------------------
+    function acceptMatch() {
+      if (!waitingActive) return;
+      waitingActive = false;
+
+      // Stop the waiting timer and auto-resolve timer
+      clearInterval(waitingCounter);
+      clearTimeout(window._autoResolveTimer); // FIX: now actually works
+
+      document.getElementById('waitingOverlay').style.display = 'none';
+
+      // Show reveal card with animation
+      showRevealCard(currentMatch);
+
+      // Save to FRIEND list only — not shared with groups
+      saveToFriendList(currentMatch.id);
+
+      // Check if this is the first ever friend match
+      // Uses friendMatches separately — groups don't trigger this
+      const friendList = getFriendMatchedList();
+      if (friendList.length === 1) {
+        localStorage.setItem('firstFriendEarned', 'true');
+      }
+
+      // Update matched countries for Global Explorer badge
+      const countries = JSON.parse(localStorage.getItem('matchedCountries') || '[]');
+      if (!countries.includes(currentMatch.country)) {
+        countries.push(currentMatch.country);
+        localStorage.setItem('matchedCountries', JSON.stringify(countries));
+        localStorage.setItem('countriesConnected', countries.length.toString());
+      }
+
+      resetMatchingLock();
+    }
+
+
+    // -------------------------------------------------------
+    // DECLINE MATCH
+    // Triggered automatically or by pressing D during demo
+    // -------------------------------------------------------
+    function declineMatch() {
+      if (!waitingActive) return;
+      waitingActive = false;
+
+      clearInterval(waitingCounter);
+      clearTimeout(window._autoResolveTimer); // FIX: now actually works
+
+      document.getElementById('waitingOverlay').style.display = 'none';
+      document.getElementById('declineOverlay').style.display = 'flex';
+
+      resetMatchingLock();
+    }
+
+
+    // -------------------------------------------------------
+    // SHOW REVEAL CARD
+    // Dramatic reveal animation — name and avatar appear with effects
+    // Identity shown for the FIRST TIME here
+    // -------------------------------------------------------
+    function showRevealCard(match) {
+
+      // Set avatar and name content
+      document.getElementById('revealAvatar').textContent = match.flag;
+      document.getElementById('revealName').textContent   = match.name;
+      document.getElementById('revealUni').textContent    = match.uni + ' · ' + match.country;
+
+      // Get user interests for shared calculation
+      const userInterests = (localStorage.getItem('userInterests') || 'Music,Coding')
+        .split(',')
+        .map(i => i.trim());
+
+      const shared        = match.interests.filter(i => userInterests.includes(i));
+      const displayShared = shared.length > 0 ? shared : [match.interests[0]];
+
+      // Build shared tags safely
+      const tagsContainer = document.getElementById('sharedTags');
+      tagsContainer.innerHTML = '';
+      displayShared.forEach(interest => {
+        const tag = document.createElement('span');
+        tag.className   = 'shared-tag';
+        tag.textContent = interest;
+        tagsContainer.appendChild(tag);
+      });
+
+      // FIX: Better compatibility formula with slight randomness
+      // Feels more realistic than always hitting same score
+      const baseScore = displayShared.length * 10 + 60;
+      const random    = Math.floor(Math.random() * 11); // 0-10 random bonus
+      const score     = Math.min(baseScore + random, 98);
+
+      document.getElementById('compatPercent').textContent = score + '%';
+      document.getElementById('compatFill').style.width    = '0%';
+
+      // Chat URL includes user ID — converse.html reads this to know who the chat is with
+      // In real project this maps to a real chat room in the database
+      document.getElementById('startChatBtn').href =
+  '/converse/?' +
+  'user=' + encodeURIComponent(match.id) +
+  '&name=' + encodeURIComponent(match.name) +
+  '&flag=' + encodeURIComponent(match.flag) +
+  '&uni=' + encodeURIComponent(match.uni) +
+  '&country=' + encodeURIComponent(match.country);
+      // Show reveal overlay first
+      document.getElementById('revealOverlay').style.display = 'flex';
+
+      // Trigger reveal animation after short delay
+      // Small delay so overlay is fully visible before animation starts
+      setTimeout(() => {
+        const identity = document.getElementById('revealIdentity');
+        identity.classList.add('revealed');
+
+        // Animate compatibility bar after identity reveals
+        setTimeout(() => {
+          document.getElementById('compatFill').style.width = score + '%';
+        }, 600);
+
+      }, 200);
+    }
+
+
+    // -------------------------------------------------------
+    // SHOW GROUP RESULT
+    // Groups show result directly — no anonymous waiting
+    // -------------------------------------------------------
+    function showGroupResult() {
+      const available = getAvailableGroups();
+
+      if (available.length === 0) {
+        document.getElementById('noMatchOverlay').style.display = 'flex';
+        resetMatchingLock();
+        return;
+      }
+
+      const group  = available[Math.floor(Math.random() * available.length)];
+      currentMatch = group;
+
+      document.getElementById('groupName').textContent = group.name;
+
+      // Build group members safely using createElement
+      const container = document.getElementById('groupMembers');
+      container.innerHTML = '';
+      group.members.forEach(member => {
+        const row  = document.createElement('div');
+        row.className = 'group-member-row';
+
+        const flag = document.createElement('span');
+        flag.className   = 'group-member-flag';
+        flag.textContent = member.flag;
+
+        const info = document.createElement('div');
+        info.className = 'group-member-info';
+
+        const name = document.createElement('div');
+        name.className   = 'group-member-name';
+        name.textContent = member.name;
+
+        const uni = document.createElement('div');
+        uni.className   = 'group-member-uni';
+        uni.textContent = member.uni;
+
+        info.appendChild(name);
+        info.appendChild(uni);
+        row.appendChild(flag);
+        row.appendChild(info);
+        container.appendChild(row);
+      });
+
+      // Group shared interests
+      const tagsContainer = document.getElementById('groupSharedTags');
+      tagsContainer.innerHTML = '';
+      group.sharedInterests.forEach(interest => {
+        const tag = document.createElement('span');
+        tag.className   = 'shared-tag';
+        tag.textContent = interest;
+        tagsContainer.appendChild(tag);
+      });
+
+      // Save to GROUP list — separate from friend matches
+      saveToGroupList(group.id);
+
+      // Track groups joined for Group Champion badge
+      const groupsJoined = parseInt(localStorage.getItem('groupsJoined') || '0');
+      localStorage.setItem('groupsJoined', (groupsJoined + 1).toString());
+
+      // Group chat URL includes group ID
+      //Putting change here
+      const membersString = group.members
+  .map(member =>
+    `${member.name}|${member.uni}|${member.country}|${member.flag}`
+  )
+  .join(',');
+
+const interestsString = group.sharedInterests.join(',');
+
+document.getElementById('startGroupChatBtn').href =
+  '/group-converse/?' +
+  'group=' + encodeURIComponent(group.id) +
+  '&name=' + encodeURIComponent(group.name) +
+  '&members=' + encodeURIComponent(membersString) +
+  '&interests=' + encodeURIComponent(interestsString);
+
+      document.getElementById('groupRevealOverlay').style.display = 'flex';
+      resetMatchingLock();
+    }
+
+
+    // -------------------------------------------------------
+    // CANCEL REQUEST
+    // -------------------------------------------------------
+    function cancelRequest() {
+      waitingActive = false;
+      clearInterval(waitingCounter);
+      clearTimeout(window._autoResolveTimer);
+      document.getElementById('waitingOverlay').style.display = 'none';
+      resetMatchingLock();
+    }
+
+
+    // -------------------------------------------------------
+    // TRY AGAIN
+    // -------------------------------------------------------
+    function tryAgain() {
+      hideAllOverlays();
+      startMatching(matchingType);
+    }
+
+
+    // -------------------------------------------------------
+    // HIDE ALL OVERLAYS
+    // -------------------------------------------------------
+    function hideAllOverlays() {
+      ['matchingOverlay', 'waitingOverlay', 'revealOverlay',
+       'groupRevealOverlay', 'declineOverlay', 'noMatchOverlay'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+
+      // Also reset reveal animation so it can play again next time
+      const identity = document.getElementById('revealIdentity');
+      if (identity) identity.classList.remove('revealed');
+    }
+
+
+    // -------------------------------------------------------
+    // RESET MATCHING LOCK
+    // -------------------------------------------------------
+    function resetMatchingLock() {
+      isMatching = false;
+      document.getElementById('findFriendBtn').setAttribute('aria-busy', 'false');
+      document.getElementById('joinGroupBtn').setAttribute('aria-busy',  'false');
+    }
+
+
+    // -------------------------------------------------------
+    // SECRET KEYBOARD SHORTCUTS — FOR DEMO PRESENTATION ONLY
+    //
+    // During presentation press these keys to control the flow:
+    //   A = Force ACCEPT → triggers reveal animation
+    //   D = Force DECLINE → shows no match found screen
+    //
+    // Only works while waiting overlay is visible
+    // Invisible to audience — only presenter knows about this
+    // -------------------------------------------------------
+    document.addEventListener('keydown', (e) => {
+
+      // Only active when waiting screen is showing
+      if (!waitingActive) return;
+
+      if (e.key === 'a' || e.key === 'A') {
+        // Force ACCEPT — cancels auto timer, triggers reveal immediately
+        clearTimeout(window._autoResolveTimer);
+        acceptMatch();
+      }
+
+      if (e.key === 'd' || e.key === 'D') {
+        // Force DECLINE — cancels auto timer, shows decline screen
+        clearTimeout(window._autoResolveTimer);
+        declineMatch();
+      }
+
+    });
+
+
+    // -------------------------------------------------------
+    // PLATFORM ASSISTANT
+    // -------------------------------------------------------
+    const answers = {
+      'How does matching work?':
+        'The Matching Agent finds a compatible student and sends them an anonymous request. Their identity is only revealed to you once they accept — creating a fun surprise! 🎯',
+      'What is group matching?':
+        'Group matching places you in a small group of 3-4 compatible students for group conversation. Great for making multiple friends at once! 👥',
+      'How is compatibility calculated?':
+        'Compatibility is based on shared interests, language overlap, and profile preferences. More shared interests = higher compatibility score! 📊'
+    };
+</script>
+{% endblock %}
