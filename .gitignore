@@ -218,3 +218,4 @@ __marimo__/
 .streamlit/secrets.toml
 # Local development scripts
 backend/seed_data.py
+backend/test_admin_data.py
