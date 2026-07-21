@@ -1,0 +1,897 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title_suffix %} — Home{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}" />
+{% endblock %}
+
+{% block assistant_body %}
+<p class="assistant-intro">Hi! Ask me anything about the platform 👋</p>
+<div class="assistant-chips">
+  <button type="button" class="chip" onclick="askQuestion('Why was I matched with this person?')">Why was I matched?</button>
+  <button type="button" class="chip" onclick="askQuestion('How does translation work?')">How does translation work?</button>
+  <button type="button" class="chip" onclick="askQuestion('How do I earn badges?')">How do I earn badges?</button>
+  <button type="button" class="chip" onclick="askQuestion('What is group matching?')">What is group matching?</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="feed-column">
+
+      <!-- ---------------------------------------------------------------
+           FEED HEADER ROW
+           Title on left, notification bell on right (desktop)
+           On mobile the bell is in the top bar instead
+      --------------------------------------------------------------- -->
+      <div class="feed-header-row">
+        <div class="feed-header">Student Moments 🌍</div>
+
+   
+      </div>
+
+
+      <!-- ---------------------------------------------------------------
+           USER POST CONTAINER
+           New posts injected here by JavaScript when user posts
+      --------------------------------------------------------------- -->
+      <div id="userPostContainer"></div>
+
+
+      <!-- ---------------------------------------------------------------
+           TODAY'S POSTS
+           Hardcoded sample data for prototype
+           In real project fetched from Django database
+      --------------------------------------------------------------- -->
+
+      <!-- Each card has: avatar, name, uni, text, meta, like+comment bar -->
+
+      <div class="moment-card" id="card-1">
+        <div class="moment-avatar av-jp">🇯🇵</div>
+        <div class="moment-body">
+          <div class="moment-name">Yuki Tanaka</div>
+          <div class="moment-uni">Tokyo University · Japan</div>
+          <div class="moment-text">Just finished my final exam! Time to sleep for a week 😅</div>
+          <div class="moment-meta">2 min ago</div>
+
+          <!-- Like and comment action bar -->
+          <div class="moment-actions">
+            <button type="button" class="like-btn" onclick="toggleLike(this, 'card-1')">
+              <i class="ph-bold ph-heart"></i>
+              <span class="like-count">12</span>
+            </button>
+            <button type="button" class="comment-btn" onclick="toggleComments('comments-1')">
+              <i class="ph-bold ph-chat-circle"></i>
+              <span>3 comments</span>
+            </button>
+          </div>
+
+          <!-- Comments section — hidden by default -->
+          <div class="comments-section" id="comments-1">
+            <div class="comment-item">
+              <span class="comment-avatar">🇧🇩</span>
+              <div class="comment-body">
+                <span class="comment-name">Rafi Khan</span>
+                <span class="comment-text">Same here! Finally free 😅</span>
+              </div>
+            </div>
+            <div class="comment-item">
+              <span class="comment-avatar">🇧🇷</span>
+              <div class="comment-body">
+                <span class="comment-name">Lucas Mendes</span>
+                <span class="comment-text">Good luck with the results!</span>
+              </div>
+            </div>
+            <div class="comment-item">
+              <span class="comment-avatar">🇰🇷</span>
+              <div class="comment-body">
+                <span class="comment-name">Jiyeon Park</span>
+                <span class="comment-text">You deserve the rest! 🎉</span>
+              </div>
+            </div>
+            <!-- Write a comment input -->
+            <div class="comment-input-row">
+              <div class="comment-input-avatar">
+                <i class="ph-bold ph-user"></i>
+              </div>
+              <input
+                type="text"
+                class="comment-input"
+                placeholder="Write a comment..."
+                onkeydown="if(event.key==='Enter') addComment(this, 'comments-1')"
+              />
+              <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-1')">
+                <i class="ph-bold ph-paper-plane-tilt"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <div class="moment-card" id="card-2">
+        <div class="moment-avatar av-bd">🇧🇩</div>
+        <div class="moment-body">
+          <div class="moment-name">Rafi Khan</div>
+          <div class="moment-uni">BUET · Bangladesh</div>
+          <div class="moment-text">Learning Python this semester — anyone want to study together? 🐍</div>
+          <div class="moment-meta">15 min ago</div>
+
+          <div class="moment-actions">
+            <button type="button" class="like-btn" onclick="toggleLike(this, 'card-2')">
+              <i class="ph-bold ph-heart"></i>
+              <span class="like-count">8</span>
+            </button>
+            <button type="button" class="comment-btn" onclick="toggleComments('comments-2')">
+              <i class="ph-bold ph-chat-circle"></i>
+              <span>2 comments</span>
+            </button>
+          </div>
+
+          <div class="comments-section" id="comments-2">
+            <div class="comment-item">
+              <span class="comment-avatar">💻</span>
+              <div class="comment-body">
+                <span class="comment-name">Lukas Bauer</span>
+                <span class="comment-text">I'm in! Let's start with Django 🚀</span>
+              </div>
+            </div>
+            <div class="comment-item">
+              <span class="comment-avatar">🇮🇳</span>
+              <div class="comment-body">
+                <span class="comment-name">Priya Sharma</span>
+                <span class="comment-text">Count me in too!</span>
+              </div>
+            </div>
+            <div class="comment-input-row">
+              <div class="comment-input-avatar">
+                <i class="ph-bold ph-user"></i>
+              </div>
+              <input
+                type="text"
+                class="comment-input"
+                placeholder="Write a comment..."
+                onkeydown="if(event.key==='Enter') addComment(this, 'comments-2')"
+              />
+              <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-2')">
+                <i class="ph-bold ph-paper-plane-tilt"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <div class="moment-card" id="card-3">
+        <div class="moment-avatar av-br">🇧🇷</div>
+        <div class="moment-body">
+          <div class="moment-name">Lucas Mendes</div>
+          <div class="moment-uni">USP · Brazil</div>
+          <div class="moment-text">Participating in a university hackathon this weekend 🚀 Excited!</div>
+          <div class="moment-meta">1 hr ago</div>
+
+          <div class="moment-actions">
+            <button type="button" class="like-btn" onclick="toggleLike(this, 'card-3')">
+              <i class="ph-bold ph-heart"></i>
+              <span class="like-count">24</span>
+            </button>
+            <button type="button" class="comment-btn" onclick="toggleComments('comments-3')">
+              <i class="ph-bold ph-chat-circle"></i>
+              <span>1 comment</span>
+            </button>
+          </div>
+
+          <div class="comments-section" id="comments-3">
+            <div class="comment-item">
+              <span class="comment-avatar">🇫🇷</span>
+              <div class="comment-body">
+                <span class="comment-name">Camille Dubois</span>
+                <span class="comment-text">Amazing! What are you building? 🔥</span>
+              </div>
+            </div>
+            <div class="comment-input-row">
+              <div class="comment-input-avatar">
+                <i class="ph-bold ph-user"></i>
+              </div>
+              <input
+                type="text"
+                class="comment-input"
+                placeholder="Write a comment..."
+                onkeydown="if(event.key==='Enter') addComment(this, 'comments-3')"
+              />
+              <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-3')">
+                <i class="ph-bold ph-paper-plane-tilt"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <div class="moment-card" id="card-4">
+        <div class="moment-avatar av-kr">🇰🇷</div>
+        <div class="moment-body">
+          <div class="moment-name">Jiyeon Park</div>
+          <div class="moment-uni">Seoul National University · South Korea</div>
+          <div class="moment-text">Anyone else obsessed with lo-fi music while studying? 🎵</div>
+          <div class="moment-meta">3 hrs ago</div>
+
+          <div class="moment-actions">
+            <button type="button" class="like-btn" onclick="toggleLike(this, 'card-4')">
+              <i class="ph-bold ph-heart"></i>
+              <span class="like-count">31</span>
+            </button>
+            <button type="button" class="comment-btn" onclick="toggleComments('comments-4')">
+              <i class="ph-bold ph-chat-circle"></i>
+              <span>4 comments</span>
+            </button>
+          </div>
+
+          <div class="comments-section" id="comments-4">
+            <div class="comment-item">
+              <span class="comment-avatar">🎵</span>
+              <div class="comment-body">
+                <span class="comment-name">Hassan Ali</span>
+                <span class="comment-text">Lo-fi is life! 🎧</span>
+              </div>
+            </div>
+            <div class="comment-item">
+              <span class="comment-avatar">🇲🇽</span>
+              <div class="comment-body">
+                <span class="comment-name">Sofia Reyes</span>
+                <span class="comment-text">Same! It helps me focus so much</span>
+              </div>
+            </div>
+            <div class="comment-item">
+              <span class="comment-avatar">🇨🇦</span>
+              <div class="comment-body">
+                <span class="comment-name">Aiden Park</span>
+                <span class="comment-text">Try ChilledCow on YouTube!</span>
+              </div>
+            </div>
+            <div class="comment-item">
+              <span class="comment-avatar">🇩🇪</span>
+              <div class="comment-body">
+                <span class="comment-name">Lukas Bauer</span>
+                <span class="comment-text">Can't study without it 😌</span>
+              </div>
+            </div>
+            <div class="comment-input-row">
+              <div class="comment-input-avatar">
+                <i class="ph-bold ph-user"></i>
+              </div>
+              <input
+                type="text"
+                class="comment-input"
+                placeholder="Write a comment..."
+                onkeydown="if(event.key==='Enter') addComment(this, 'comments-4')"
+              />
+              <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-4')">
+                <i class="ph-bold ph-paper-plane-tilt"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ---------------------------------------------------------------
+           ALL CAUGHT UP SECTION
+      --------------------------------------------------------------- -->
+      <div class="caught-up">
+        <div class="caught-up-icon">✅</div>
+        <div class="caught-up-title">You're all caught up for today!</div>
+        <div class="caught-up-date" id="todayDate"></div>
+        <button type="button" class="see-more-btn" id="seeMoreBtn" onclick="loadNextDay()">
+          See older posts
+        </button>
+      </div>
+
+
+      <!-- ---------------------------------------------------------------
+           OLDER POSTS — One day at a time
+           Day 1 hardcoded as Yesterday
+           Days 2-6 labels set dynamically by JavaScript
+      --------------------------------------------------------------- -->
+
+      <!-- Day 1 — Yesterday -->
+      <div class="day-section" id="day-1">
+        <div class="day-divider">
+          <div class="day-divider-line"></div>
+          <div class="day-divider-label">Yesterday</div>
+          <div class="day-divider-line"></div>
+        </div>
+
+        <div class="moment-card" id="card-y1">
+          <div class="moment-avatar av-de">🇩🇪</div>
+          <div class="moment-body">
+            <div class="moment-name">Lukas Bauer</div>
+            <div class="moment-uni">TU Munich · Germany</div>
+            <div class="moment-text">Visited the library for 6 hours straight. Engineering life 📚</div>
+            <div class="moment-meta">Yesterday</div>
+            <div class="moment-actions">
+              <button type="button" class="like-btn" onclick="toggleLike(this, 'card-y1')">
+                <i class="ph-bold ph-heart"></i>
+                <span class="like-count">5</span>
+              </button>
+              <button type="button" class="comment-btn" onclick="toggleComments('comments-y1')">
+                <i class="ph-bold ph-chat-circle"></i>
+                <span>0 comments</span>
+              </button>
+            </div>
+            <div class="comments-section" id="comments-y1">
+              <div class="comment-input-row">
+                <div class="comment-input-avatar"><i class="ph-bold ph-user"></i></div>
+                <input type="text" class="comment-input" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') addComment(this, 'comments-y1')" />
+                <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-y1')"><i class="ph-bold ph-paper-plane-tilt"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="moment-card" id="card-y2">
+          <div class="moment-avatar av-in">🇮🇳</div>
+          <div class="moment-body">
+            <div class="moment-name">Priya Sharma</div>
+            <div class="moment-uni">IIT Delhi · India</div>
+            <div class="moment-text">Made my first ML model today! 🤖 Tiny but it works!</div>
+            <div class="moment-meta">Yesterday</div>
+            <div class="moment-actions">
+              <button type="button" class="like-btn" onclick="toggleLike(this, 'card-y2')">
+                <i class="ph-bold ph-heart"></i>
+                <span class="like-count">18</span>
+              </button>
+              <button type="button" class="comment-btn" onclick="toggleComments('comments-y2')">
+                <i class="ph-bold ph-chat-circle"></i>
+                <span>1 comment</span>
+              </button>
+            </div>
+            <div class="comments-section" id="comments-y2">
+              <div class="comment-item">
+                <span class="comment-avatar">💻</span>
+                <div class="comment-body">
+                  <span class="comment-name">Rafi Khan</span>
+                  <span class="comment-text">That's amazing! What model? 🤖</span>
+                </div>
+              </div>
+              <div class="comment-input-row">
+                <div class="comment-input-avatar"><i class="ph-bold ph-user"></i></div>
+                <input type="text" class="comment-input" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') addComment(this, 'comments-y2')" />
+                <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-y2')"><i class="ph-bold ph-paper-plane-tilt"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="load-next-btn" onclick="loadNextDay()">
+          <i class="ph-bold ph-caret-down"></i> Show older posts
+        </button>
+      </div>
+
+
+      <!-- Day 2 -->
+      <div class="day-section" id="day-2">
+        <div class="day-divider">
+          <div class="day-divider-line"></div>
+          <div class="day-divider-label" id="day2label"></div>
+          <div class="day-divider-line"></div>
+        </div>
+        <div class="moment-card" id="card-d2">
+          <div class="moment-avatar av-ng">🇳🇬</div>
+          <div class="moment-body">
+            <div class="moment-name">Chidi Okafor</div>
+            <div class="moment-uni">University of Lagos · Nigeria</div>
+            <div class="moment-text">Group project finally done! Never doing a 5-person group again 😂</div>
+            <div class="moment-meta" id="day2meta"></div>
+            <div class="moment-actions">
+              <button type="button" class="like-btn" onclick="toggleLike(this, 'card-d2')">
+                <i class="ph-bold ph-heart"></i>
+                <span class="like-count">14</span>
+              </button>
+              <button type="button" class="comment-btn" onclick="toggleComments('comments-d2')">
+                <i class="ph-bold ph-chat-circle"></i>
+                <span>0 comments</span>
+              </button>
+            </div>
+            <div class="comments-section" id="comments-d2">
+              <div class="comment-input-row">
+                <div class="comment-input-avatar"><i class="ph-bold ph-user"></i></div>
+                <input type="text" class="comment-input" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') addComment(this, 'comments-d2')" />
+                <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-d2')"><i class="ph-bold ph-paper-plane-tilt"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="load-next-btn" onclick="loadNextDay()">
+          <i class="ph-bold ph-caret-down"></i> Show older posts
+        </button>
+      </div>
+
+
+      <!-- Day 3 -->
+      <div class="day-section" id="day-3">
+        <div class="day-divider">
+          <div class="day-divider-line"></div>
+          <div class="day-divider-label" id="day3label"></div>
+          <div class="day-divider-line"></div>
+        </div>
+        <div class="moment-card" id="card-d3">
+          <div class="moment-avatar av-mx">🇲🇽</div>
+          <div class="moment-body">
+            <div class="moment-name">Sofia Reyes</div>
+            <div class="moment-uni">UNAM · Mexico</div>
+            <div class="moment-text">Started learning Japanese! Day 1 complete 🇯🇵 Konnichiwa!</div>
+            <div class="moment-meta" id="day3meta"></div>
+            <div class="moment-actions">
+              <button type="button" class="like-btn" onclick="toggleLike(this, 'card-d3')">
+                <i class="ph-bold ph-heart"></i>
+                <span class="like-count">9</span>
+              </button>
+              <button type="button" class="comment-btn" onclick="toggleComments('comments-d3')">
+                <i class="ph-bold ph-chat-circle"></i>
+                <span>0 comments</span>
+              </button>
+            </div>
+            <div class="comments-section" id="comments-d3">
+              <div class="comment-input-row">
+                <div class="comment-input-avatar"><i class="ph-bold ph-user"></i></div>
+                <input type="text" class="comment-input" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') addComment(this, 'comments-d3')" />
+                <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-d3')"><i class="ph-bold ph-paper-plane-tilt"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="load-next-btn" onclick="loadNextDay()">
+          <i class="ph-bold ph-caret-down"></i> Show older posts
+        </button>
+      </div>
+
+
+      <!-- Day 4 -->
+      <div class="day-section" id="day-4">
+        <div class="day-divider">
+          <div class="day-divider-line"></div>
+          <div class="day-divider-label" id="day4label"></div>
+          <div class="day-divider-line"></div>
+        </div>
+        <div class="moment-card" id="card-d4">
+          <div class="moment-avatar av-fr">🇫🇷</div>
+          <div class="moment-body">
+            <div class="moment-name">Camille Dubois</div>
+            <div class="moment-uni">Sorbonne University · France</div>
+            <div class="moment-text">Semester abroad applications are open! Who else is applying? ✈️</div>
+            <div class="moment-meta" id="day4meta"></div>
+            <div class="moment-actions">
+              <button type="button" class="like-btn" onclick="toggleLike(this, 'card-d4')">
+                <i class="ph-bold ph-heart"></i>
+                <span class="like-count">22</span>
+              </button>
+              <button type="button" class="comment-btn" onclick="toggleComments('comments-d4')">
+                <i class="ph-bold ph-chat-circle"></i>
+                <span>0 comments</span>
+              </button>
+            </div>
+            <div class="comments-section" id="comments-d4">
+              <div class="comment-input-row">
+                <div class="comment-input-avatar"><i class="ph-bold ph-user"></i></div>
+                <input type="text" class="comment-input" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') addComment(this, 'comments-d4')" />
+                <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-d4')"><i class="ph-bold ph-paper-plane-tilt"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="load-next-btn" onclick="loadNextDay()">
+          <i class="ph-bold ph-caret-down"></i> Show older posts
+        </button>
+      </div>
+
+
+      <!-- Day 5 -->
+      <div class="day-section" id="day-5">
+        <div class="day-divider">
+          <div class="day-divider-line"></div>
+          <div class="day-divider-label" id="day5label"></div>
+          <div class="day-divider-line"></div>
+        </div>
+        <div class="moment-card" id="card-d5">
+          <div class="moment-avatar av-ca">🇨🇦</div>
+          <div class="moment-body">
+            <div class="moment-name">Aiden Park</div>
+            <div class="moment-uni">UBC · Canada</div>
+            <div class="moment-text">First time cooking my own meals this semester. Instant noodles count right? 😅</div>
+            <div class="moment-meta" id="day5meta"></div>
+            <div class="moment-actions">
+              <button type="button" class="like-btn" onclick="toggleLike(this, 'card-d5')">
+                <i class="ph-bold ph-heart"></i>
+                <span class="like-count">17</span>
+              </button>
+              <button type="button" class="comment-btn" onclick="toggleComments('comments-d5')">
+                <i class="ph-bold ph-chat-circle"></i>
+                <span>0 comments</span>
+              </button>
+            </div>
+            <div class="comments-section" id="comments-d5">
+              <div class="comment-input-row">
+                <div class="comment-input-avatar"><i class="ph-bold ph-user"></i></div>
+                <input type="text" class="comment-input" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') addComment(this, 'comments-d5')" />
+                <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-d5')"><i class="ph-bold ph-paper-plane-tilt"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="load-next-btn" onclick="loadNextDay()">
+          <i class="ph-bold ph-caret-down"></i> Show older posts
+        </button>
+      </div>
+
+
+      <!-- Day 6 — Last day -->
+      <div class="day-section" id="day-6">
+        <div class="day-divider">
+          <div class="day-divider-line"></div>
+          <div class="day-divider-label" id="day6label"></div>
+          <div class="day-divider-line"></div>
+        </div>
+        <div class="moment-card" id="card-d6">
+          <div class="moment-avatar av-pk">🇵🇰</div>
+          <div class="moment-body">
+            <div class="moment-name">Hassan Ali</div>
+            <div class="moment-uni">LUMS · Pakistan</div>
+            <div class="moment-text">Won 2nd place in the university quiz competition! 🏆</div>
+            <div class="moment-meta" id="day6meta"></div>
+            <div class="moment-actions">
+              <button type="button" class="like-btn" onclick="toggleLike(this, 'card-d6')">
+                <i class="ph-bold ph-heart"></i>
+                <span class="like-count">33</span>
+              </button>
+              <button type="button" class="comment-btn" onclick="toggleComments('comments-d6')">
+                <i class="ph-bold ph-chat-circle"></i>
+                <span>0 comments</span>
+              </button>
+            </div>
+            <div class="comments-section" id="comments-d6">
+              <div class="comment-input-row">
+                <div class="comment-input-avatar"><i class="ph-bold ph-user"></i></div>
+                <input type="text" class="comment-input" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') addComment(this, 'comments-d6')" />
+                <button type="button" class="comment-send" onclick="addComment(this.previousElementSibling, 'comments-d6')"><i class="ph-bold ph-paper-plane-tilt"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- End of 7 days -->
+        <div class="end-of-feed">
+          <i class="ph-bold ph-calendar-blank"></i>
+          <p>That's all from the past 7 days</p>
+        </div>
+      </div>
+
+
+    </div>
+  </main>
+{% endblock %}
+
+{% block modals %}
+<div class="modal-overlay" id="postModal">
+    <div class="modal">
+
+      <div class="modal-header">
+        <div class="modal-title">Post a Moment</div>
+        <button type="button" class="modal-close" onclick="closePostModal()">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <div class="modal-user">
+        <div class="modal-avatar">
+          <i class="ph-bold ph-user"></i>
+        </div>
+        <div class="modal-username" id="modalUsername">You</div>
+      </div>
+
+      <textarea
+        class="moment-textarea"
+        id="momentText"
+        placeholder="What's on your mind? Share a university moment..."
+        maxlength="200"
+      ></textarea>
+
+      <div class="char-count"><span id="charCount">0</span>/200</div>
+
+      <button type="button" class="modal-post-btn" onclick="postMoment()">
+        Post Moment
+      </button>
+
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    // -------------------------------------------------------
+    // DYNAMIC DATES
+    // Set today's date and calculate past day labels
+    // -------------------------------------------------------
+    const today = new Date();
+
+    function formatDate(date) {
+      return date.toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric', year: 'numeric'
+      });
+    }
+
+    function formatShort(date) {
+      return date.toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric'
+      });
+    }
+
+    document.getElementById('todayDate').textContent = formatDate(today);
+
+    // Set labels for days 2-6 only
+    // Day 1 is hardcoded as "Yesterday" in HTML
+    for (let i = 2; i <= 6; i++) {
+      const pastDate = new Date(today);
+      pastDate.setDate(today.getDate() - i);
+      const label = document.getElementById('day' + i + 'label');
+      const meta  = document.getElementById('day' + i + 'meta');
+      if (label) label.textContent = formatShort(pastDate);
+      if (meta)  meta.textContent  = formatShort(pastDate);
+    }
+
+
+    // -------------------------------------------------------
+    // USER INFO from localStorage
+    // -------------------------------------------------------
+    const userName = localStorage.getItem('userName')?.trim() || 'You';
+    const userUni  = localStorage.getItem('userUni')?.trim()  || '';
+    document.getElementById('modalUsername').textContent = userName;
+
+
+    // -------------------------------------------------------
+    // OLDER POSTS — One day at a time
+    // -------------------------------------------------------
+    let currentDay = 0;
+    const totalDays = 6;
+
+    function loadNextDay() {
+      currentDay++;
+      document.getElementById('seeMoreBtn').style.display = 'none';
+      document.querySelectorAll('.load-next-btn').forEach(btn => {
+        btn.style.display = 'none';
+      });
+      const nextSection = document.getElementById('day-' + currentDay);
+      if (nextSection) {
+        nextSection.style.display = 'block';
+        if (currentDay < totalDays) {
+          const btn = nextSection.querySelector('.load-next-btn');
+          if (btn) btn.style.display = 'flex';
+        }
+        setTimeout(() => {
+          nextSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+
+
+    // -------------------------------------------------------
+    // LIKE BUTTON TOGGLE
+    // Toggles liked state and increments/decrements count
+    // In real project this sends a POST to Django API
+    // -------------------------------------------------------
+    function toggleLike(btn, cardId) {
+      const isLiked = btn.classList.contains('liked');
+      const countEl = btn.querySelector('.like-count');
+      let count = parseInt(countEl.textContent);
+
+      if (isLiked) {
+        // Unlike
+        btn.classList.remove('liked');
+        countEl.textContent = count - 1;
+      } else {
+        // Like — add heart animation
+        btn.classList.add('liked');
+        countEl.textContent = count + 1;
+
+        // Save notification for post owner in real project
+        // For prototype just increment liked counter
+        let liked = parseInt(localStorage.getItem('likesGiven') || '0');
+        localStorage.setItem('likesGiven', liked + 1);
+      }
+    }
+
+
+    // -------------------------------------------------------
+    // COMMENT SECTION TOGGLE
+    // Shows or hides the comments section under a post
+    // -------------------------------------------------------
+    function toggleComments(commentsId) {
+      const section = document.getElementById(commentsId);
+      if (!section) return;
+      const isOpen = section.classList.contains('open');
+      section.classList.toggle('open');
+      // Focus comment input when opening
+      if (!isOpen) {
+        const input = section.querySelector('.comment-input');
+        if (input) setTimeout(() => input.focus(), 300);
+      }
+    }
+
+
+    // -------------------------------------------------------
+    // ADD COMMENT
+    // Safely adds a new comment using createElement + textContent
+    // XSS safe — no innerHTML for user content
+    // -------------------------------------------------------
+    function addComment(input, commentsId) {
+      const text = input.value.trim();
+      if (!text) return;
+
+      const section = document.getElementById(commentsId);
+      const inputRow = section.querySelector('.comment-input-row');
+
+      // Build comment item safely
+      const item = document.createElement('div');
+      item.className = 'comment-item new-comment';
+
+      const avatar = document.createElement('span');
+      avatar.className = 'comment-avatar';
+      avatar.textContent = '👤';
+
+      const body = document.createElement('div');
+      body.className = 'comment-body';
+
+      const name = document.createElement('span');
+      name.className = 'comment-name';
+      name.textContent = userName;
+
+      const commentText = document.createElement('span');
+      commentText.className = 'comment-text';
+      commentText.textContent = text; // textContent — XSS safe
+
+      body.appendChild(name);
+      body.appendChild(commentText);
+      item.appendChild(avatar);
+      item.appendChild(body);
+
+      // Insert before the input row
+      section.insertBefore(item, inputRow);
+
+      // Clear input
+      input.value = '';
+
+      // Update comment count on the button
+      const card = section.closest('.moment-body');
+      const commentBtn = card.querySelector('.comment-btn span');
+      if (commentBtn) {
+        const currentCount = parseInt(commentBtn.textContent) || 0;
+        commentBtn.textContent = (currentCount + 1) + ' comment' + (currentCount + 1 === 1 ? '' : 's');
+      }
+
+      // Track for missions
+      let commentsMade = parseInt(localStorage.getItem('commentsMade') || '0');
+      localStorage.setItem('commentsMade', commentsMade + 1);
+    }
+
+
+    // -------------------------------------------------------
+    // POST MOMENT MODAL
+    // -------------------------------------------------------
+    function openPostModal() {
+      document.getElementById('postModal').style.display = 'flex';
+      document.getElementById('momentText').focus();
+    }
+
+    function closePostModal() {
+      document.getElementById('postModal').style.display = 'none';
+      document.getElementById('momentText').value = '';
+      document.getElementById('charCount').textContent = '0';
+    }
+
+    document.getElementById('postModal').addEventListener('click', function(e) {
+      if (e.target === this) closePostModal();
+    });
+
+    document.getElementById('momentText').addEventListener('input', function() {
+      document.getElementById('charCount').textContent = this.value.length;
+    });
+
+    // XSS safe post — uses createElement + textContent
+    function postMoment() {
+      const text = document.getElementById('momentText').value.trim();
+      if (!text) {
+        // Show inline error instead of ugly alert
+        const textarea = document.getElementById('momentText');
+        textarea.style.borderColor = '#ef4444';
+        setTimeout(() => textarea.style.borderColor = '', 2000);
+        return;
+      }
+
+      // Build card safely
+      const card = document.createElement('div');
+      card.className = 'moment-card new-post';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'moment-avatar av-user';
+      const icon = document.createElement('i');
+      icon.className = 'ph-bold ph-user';
+      avatar.appendChild(icon);
+
+      const body = document.createElement('div');
+      body.className = 'moment-body';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'moment-name';
+      nameEl.textContent = userName;
+
+      const uniEl = document.createElement('div');
+      uniEl.className = 'moment-uni';
+      uniEl.textContent = userUni;
+
+      const textEl = document.createElement('div');
+      textEl.className = 'moment-text';
+      textEl.textContent = text;
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'moment-meta';
+      metaEl.textContent = 'Just now';
+
+      // Like and comment actions for new post
+      const actionsEl = document.createElement('div');
+      actionsEl.className = 'moment-actions';
+
+      const likeBtn = document.createElement('button');
+      likeBtn.type = 'button';
+      likeBtn.className = 'like-btn';
+      likeBtn.innerHTML = '<i class="ph-bold ph-heart"></i><span class="like-count">0</span>';
+      likeBtn.onclick = function() { toggleLike(this, 'user-post'); };
+
+      const commentBtn = document.createElement('button');
+      commentBtn.type = 'button';
+      commentBtn.className = 'comment-btn';
+      commentBtn.innerHTML = '<i class="ph-bold ph-chat-circle"></i><span>0 comments</span>';
+
+      actionsEl.appendChild(likeBtn);
+      actionsEl.appendChild(commentBtn);
+
+      body.appendChild(nameEl);
+      body.appendChild(uniEl);
+      body.appendChild(textEl);
+      body.appendChild(metaEl);
+      body.appendChild(actionsEl);
+      card.appendChild(avatar);
+      card.appendChild(body);
+
+      const container = document.getElementById('userPostContainer');
+      container.insertBefore(card, container.firstChild);
+
+      // Track moment posted for missions
+      localStorage.setItem('momentPostedToday', new Date().toDateString());
+
+      closePostModal();
+    }
+
+
+    // -------------------------------------------------------
+    // PLATFORM ASSISTANT
+    // -------------------------------------------------------
+    const answers = {
+      'Why was I matched with this person?':
+        'You were matched based on shared interests, language preferences, and your matching settings. The Matching Agent found a high compatibility score between your profiles! 🤝',
+      'How does translation work?':
+        'When Auto Translate is ON, incoming messages are automatically translated to your preferred language. You can also tap Translate on any message manually. 🌐',
+      'How do I earn badges?':
+        'Complete your first match for "First Friend", send messages for "Social Butterfly", and chat with students from different countries for "Global Explorer"! 🏅',
+      'What is group matching?':
+        'Group matching places you into a small discussion group with compatible students. Go to Connect and tap "Join Group"! 👥'
+    };
+
+</script>
+{% endblock %}
