@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Student Connect — Profile Setup</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Phosphor Icons via jsDelivr — version locked -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+
+  <!-- Profile setup styles -->
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/profile-setup.css' %}" />
+</head>
+<body>
+
+  <!-- =====================================================================
+       PAGE WRAPPER
+  ===================================================================== -->
+  <div class="page-wrapper">
+
+    <div class="top-logo">🌍 Global Student Connect</div>
+
+    <!-- =====================================================================
+         PROGRESS BAR — unchanged, pure UI, no data involved
+    ===================================================================== -->
+    <div class="progress-bar">
+
+      <div class="progress-step active" id="step-indicator-1">
+        <div class="step-circle">1</div>
+        <div class="step-label">Basic Info</div>
+      </div>
+
+      <div class="progress-line" id="line-1"></div>
+
+      <div class="progress-step" id="step-indicator-2">
+        <div class="step-circle">2</div>
+        <div class="step-label">Preferences</div>
+      </div>
+
+      <div class="progress-line" id="line-2"></div>
+
+      <div class="progress-step" id="step-indicator-3">
+        <div class="step-circle">3</div>
+        <div class="step-label">Interests</div>
+      </div>
+
+    </div>
+    <!-- END PROGRESS BAR — note: dropped the prototype's step-4 "Done" indicator
+         from this stepper specifically. The celebration screen still exists —
+         it's just its own page now (accounts/setup-complete.html), rendered by
+         profile_setup_view on success, built from the real saved Profile/
+         Interest rows instead of localStorage. See that template for the
+         "You're all set!" screen. -->
+
+
+    <!-- =====================================================================
+         ONE REAL FORM WRAPS ALL 3 STEPS
+         Steps 1 & 2's "Continue" buttons stay type="button" (pure JS
+         navigation, nothing submitted). Only the Step 3 "Finish Setup"
+         button is type="submit" — that's the one real POST to
+         accounts.profile_setup_view.
+    ===================================================================== -->
+    <form method="post" id="setupForm" onsubmit="return validateStep(3)">
+      {% csrf_token %}
+      <input type="hidden" name="is_edit" value="{% if is_edit %}true{% else %}false{% endif %}">
+
+      <!-- -------------------------------------------------------------------
+           STEP 1 — Basic Info
+           NOTE: the prototype's "University" field is intentionally dropped.
+           Per the project brief, University is auto-resolved from the
+           verified email domain once Google OAuth exists (Step 7) — not
+           typed by hand. Test users just have university = None until then.
+      ------------------------------------------------------------------- -->
+      <div class="step-panel active" id="step-1">
+
+        <h2 class="step-title">Tell us about yourself</h2>
+        <p class="step-subtitle">This is what other students will see on your profile</p>
+
+        <div class="input-group">
+          <label class="input-label" for="{{ form.display_name.id_for_label }}">Full Name</label>
+          {{ form.display_name }}
+          {% if form.display_name.errors %}
+            <p class="error-msg">{{ form.display_name.errors|join:", " }}</p>
+          {% endif %}
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="{{ form.country.id_for_label }}">Country</label>
+          {{ form.country }}
+          {% if form.country.errors %}
+            <p class="error-msg">{{ form.country.errors|join:", " }}</p>
+          {% endif %}
+        </div>
+
+        <button type="button" class="next-btn" onclick="goToStep(2)">
+          Continue <i class="ph-bold ph-arrow-right"></i>
+        </button>
+
+      </div>
+      <!-- END STEP 1 -->
+
+
+      <!-- -------------------------------------------------------------------
+           STEP 2 — Preferences
+      ------------------------------------------------------------------- -->
+      <div class="step-panel" id="step-2">
+
+        <h2 class="step-title">Your preferences</h2>
+        <p class="step-subtitle">Help us set up your experience and find the right matches</p>
+
+        <div class="input-group">
+          <label class="input-label" for="{{ form.primary_language.id_for_label }}">Primary Language</label>
+          {{ form.primary_language }}
+          {% if form.primary_language.errors %}
+            <p class="error-msg">{{ form.primary_language.errors|join:", " }}</p>
+          {% endif %}
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="{{ form.secondary_language.id_for_label }}">Secondary Language</label>
+          {{ form.secondary_language }}
+          {% if form.secondary_language.errors %}
+            <p class="error-msg">{{ form.secondary_language.errors|join:", " }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Gender — used for same-gender matching, per the brief -->
+        <div class="input-group">
+          <label class="input-label">Your Gender</label>
+          <p class="input-hint">You will be matched with students of the same gender</p>
+
+          <div class="radio-group">
+            {% for radio in form.gender %}
+              <label class="radio-option">
+                {{ radio.tag }}
+                <div class="radio-box">
+                  <span class="radio-icon">{% if radio.choice_label == 'Male' %}👨{% else %}👩{% endif %}</span>
+                  <span class="radio-label">{{ radio.choice_label }}</span>
+                </div>
+              </label>
+            {% endfor %}
+          </div>
+          {% if form.gender.errors %}
+            <p class="error-msg" id="gender-error">{{ form.gender.errors|join:", " }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Auto Translate toggle — real checkbox hidden underneath,
+             existing toggle-track visual just mirrors its checked state -->
+        <div class="input-group">
+          <label class="input-label">Auto Translation</label>
+          <p class="input-hint">Automatically translate incoming messages to your primary language</p>
+
+          <div class="toggle-row">
+            <span class="toggle-label" id="toggleLabel">ON</span>
+            <div class="toggle-track" id="translateToggle" onclick="toggleTranslate()">
+              <div class="toggle-thumb"></div>
+            </div>
+            <span class="visually-hidden-checkbox">{{ form.auto_translate }}</span>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="back-btn" onclick="goToStep(1)">
+            <i class="ph-bold ph-arrow-left"></i> Back
+          </button>
+          <button type="button" class="next-btn" onclick="goToStep(3)">
+            Continue <i class="ph-bold ph-arrow-right"></i>
+          </button>
+        </div>
+
+      </div>
+      <!-- END STEP 2 -->
+
+
+      <!-- -------------------------------------------------------------------
+           STEP 3 — Interests
+           form.interests renders as checkboxes (CheckboxSelectMultiple).
+           Each one is hidden and wrapped in a <label> together with the
+           original .interest-tag visual button, so clicking the tag
+           natively toggles the real checkbox — no manual JS wiring needed
+           for the click itself, just for the visual "selected" state,
+           the counter, and the max-5 disable behavior.
+      ------------------------------------------------------------------- -->
+      <div class="step-panel" id="step-3">
+
+        <h2 class="step-title">What are you into?</h2>
+        <p class="step-subtitle">Pick up to 5 interests — used to find your best matches</p>
+
+        <div class="interest-counter">
+          <span id="selectedCount">0</span>/5 selected
+        </div>
+
+        <div class="interest-grid">
+          {% for checkbox in form.interests %}
+            <label class="interest-tag-wrap">
+              {{ checkbox.tag }}
+              <span class="interest-tag">
+                {% if checkbox.choice_label == 'Music' %}🎵
+                {% elif checkbox.choice_label == 'Travel' %}✈️
+                {% elif checkbox.choice_label == 'Reading' %}📚
+                {% elif checkbox.choice_label == 'Photography' %}📸
+                {% elif checkbox.choice_label == 'Art & Design' %}🎨
+                {% elif checkbox.choice_label == 'Cricket' %}🏏
+                {% elif checkbox.choice_label == 'Football' %}⚽
+                {% elif checkbox.choice_label == 'Badminton' %}🏸
+                {% elif checkbox.choice_label == 'Cooking' %}🍳
+                {% elif checkbox.choice_label == 'Coding' %}💻
+                {% elif checkbox.choice_label == 'Movies & TV' %}🎬
+                {% elif checkbox.choice_label == 'Gaming' %}🎮
+                {% endif %} {{ checkbox.choice_label }}
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+        {% if form.interests.errors %}
+          <p class="error-msg" id="interestError">{{ form.interests.errors|join:", " }}</p>
+        {% endif %}
+
+        <div class="btn-row">
+          <button type="button" class="back-btn" onclick="goToStep(2)">
+            <i class="ph-bold ph-arrow-left"></i> Back
+          </button>
+          <button type="submit" class="next-btn">
+            Finish Setup <i class="ph-bold ph-check"></i>
+          </button>
+        </div>
+
+      </div>
+      <!-- END STEP 3 -->
+
+    </form>
+
+  </div>
+  <!-- END PAGE WRAPPER -->
+
+
+  <!-- =====================================================================
+       JAVASCRIPT
+       localStorage prefill/save logic is gone entirely — Django's bound
+       form already pre-fills fields on re-render (e.g. after a failed
+       submit, or revisiting this page), and a successful submit renders
+       the real setup-complete.html celebration screen server-side.
+  ===================================================================== -->
+  <script>
+
+    // -------------------------------------------------------
+    // STEP NAVIGATION — unchanged from the prototype
+    // -------------------------------------------------------
+    let currentStep = 1;
+
+    function goToStep(stepNumber) {
+
+      if (stepNumber > currentStep) {
+        if (!validateStep(currentStep)) return;
+      }
+
+      document.getElementById('step-' + currentStep).classList.remove('active');
+
+      const currentIndicator = document.getElementById('step-indicator-' + currentStep);
+      currentIndicator.classList.remove('active');
+
+      if (stepNumber > currentStep) {
+        currentIndicator.classList.add('completed');
+        const line = document.getElementById('line-' + currentStep);
+        if (line) line.classList.add('filled');
+      }
+
+      currentStep = stepNumber;
+      document.getElementById('step-' + currentStep).classList.add('active');
+      document.getElementById('step-indicator-' + currentStep).classList.add('active');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+
+    // -------------------------------------------------------
+    // VALIDATION — same shape as the prototype, field ids
+    // updated to match Django's rendered form (id_display_name,
+    // id_country, etc. — Django auto-generates "id_<field name>").
+    // University check removed (field no longer exists).
+    // -------------------------------------------------------
+    function validateStep(step) {
+
+      if (step === 1) {
+        const name    = document.getElementById('id_display_name').value.trim();
+        const country = document.getElementById('id_country').value;
+
+        if (!name) { showError('id_display_name', 'Please enter your name'); return false; }
+        if (!country) { showError('id_country', 'Please select your country'); return false; }
+      }
+
+      if (step === 2) {
+        const lang1  = document.getElementById('id_primary_language').value;
+        const lang2  = document.getElementById('id_secondary_language').value;
+        const gender = document.querySelector('input[name="gender"]:checked');
+
+        if (!lang1) { showError('id_primary_language', 'Please select your primary language'); return false; }
+        if (!lang2) { showError('id_secondary_language', 'Please select your secondary language'); return false; }
+        if (!gender) { showGenderError('Please select your gender'); return false; }
+      }
+
+      if (step === 3) {
+        if (getCheckedInterests().length === 0) {
+          let err = document.getElementById('interestError');
+          if (!err) {
+            err = document.createElement('p');
+            err.id = 'interestError';
+            err.className = 'error-msg';
+            const grid = document.querySelector('.interest-grid');
+            grid.parentNode.insertBefore(err, grid.nextSibling);
+          }
+          err.textContent = 'Please select at least 1 interest';
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    function showError(fieldId, message) {
+      clearError(fieldId);
+      const field = document.getElementById(fieldId);
+      field.classList.add('error');
+      const err = document.createElement('p');
+      err.className = 'error-msg';
+      err.id = fieldId + '-error';
+      err.textContent = message;
+      field.parentNode.appendChild(err);
+      field.addEventListener('input',  () => clearError(fieldId), { once: true });
+      field.addEventListener('change', () => clearError(fieldId), { once: true });
+    }
+
+    function clearError(fieldId) {
+      const field = document.getElementById(fieldId);
+      if (field) field.classList.remove('error');
+      const err = document.getElementById(fieldId + '-error');
+      if (err) err.remove();
+    }
+
+    function showGenderError(message) {
+      let err = document.getElementById('gender-error');
+      if (!err) {
+        err = document.createElement('p');
+        err.id = 'gender-error';
+        err.className = 'error-msg';
+        const radioGroup = document.querySelector('.radio-group');
+        radioGroup.parentNode.insertBefore(err, radioGroup.nextSibling);
+      }
+      err.textContent = message;
+
+      document.querySelectorAll('input[name="gender"]').forEach(r => {
+        r.addEventListener('change', () => {
+          const e = document.getElementById('gender-error');
+          if (e) e.remove();
+        }, { once: true });
+      });
+    }
+
+
+    // -------------------------------------------------------
+    // AUTO TRANSLATE TOGGLE — now mirrors the real hidden
+    // checkbox (form.auto_translate) instead of a JS-only flag
+    // -------------------------------------------------------
+    function toggleTranslate() {
+      const checkbox = document.getElementById('id_auto_translate');
+      checkbox.checked = !checkbox.checked;
+      syncTranslateVisual();
+    }
+
+    function syncTranslateVisual() {
+      const checkbox = document.getElementById('id_auto_translate');
+      const track = document.getElementById('translateToggle');
+      const label = document.getElementById('toggleLabel');
+      if (checkbox.checked) {
+        track.classList.add('active');
+        label.textContent = 'ON';
+      } else {
+        track.classList.remove('active');
+        label.textContent = 'OFF';
+      }
+    }
+
+
+    // -------------------------------------------------------
+    // INTEREST TAGS — real checkboxes now, this just handles
+    // the visual "selected" state, counter, and max-5 disable
+    // -------------------------------------------------------
+    const MAX_INTERESTS = 5;
+
+    function getCheckedInterests() {
+      return Array.from(document.querySelectorAll('.interest-tag-wrap input[type="checkbox"]:checked'));
+    }
+
+    function refreshInterestUI() {
+      const checked = getCheckedInterests();
+
+      document.querySelectorAll('.interest-tag-wrap').forEach(wrap => {
+        const checkbox = wrap.querySelector('input[type="checkbox"]');
+        const tag = wrap.querySelector('.interest-tag');
+        tag.classList.toggle('selected', checkbox.checked);
+
+        if (checked.length >= MAX_INTERESTS && !checkbox.checked) {
+          tag.classList.add('disabled');
+          checkbox.disabled = true;
+        } else {
+          tag.classList.remove('disabled');
+          checkbox.disabled = false;
+        }
+      });
+
+      document.getElementById('selectedCount').textContent = checked.length;
+
+      const err = document.getElementById('interestError');
+      if (checked.length > 0 && err) err.remove();
+    }
+
+    document.querySelectorAll('.interest-tag-wrap input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', refreshInterestUI);
+    });
+
+
+    // -------------------------------------------------------
+    // ON LOAD — sync visual state to whatever Django rendered
+    // (matters after a failed submit, or revisiting this page
+    // with an already-partially-filled Profile)
+    // -------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      syncTranslateVisual();
+      refreshInterestUI();
+
+      {% if form.errors %}
+        {% if form.display_name.errors or form.country.errors %}
+          goToStep(1);
+        {% elif form.primary_language.errors or form.secondary_language.errors or form.gender.errors %}
+          goToStep(2);
+        {% elif form.interests.errors %}
+          goToStep(3);
+        {% endif %}
+      {% endif %}
+    });
+
+  </script>
+
+</body>
+</html>
