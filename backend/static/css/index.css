@@ -1,0 +1,429 @@
+/* ============================================================
+   GLOBAL STUDENT CONNECT — styles.css
+   Landing / Sign-in Page Styles
+
+   TABLE OF CONTENTS:
+   1. Reset & Base Styles
+   2. Page Layout
+   3. Left Side — Brand Panel
+   4. Right Side — Sign-in Panel
+   5. Verified Badge
+   6. Google Button
+   7. Small text & notes
+   8. Mobile Responsive
+============================================================ */
+
+
+/* ============================================================
+   1. RESET & BASE STYLES
+============================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-height: 100vh;
+  background-color: #f8f7ff;
+}
+
+
+/* ============================================================
+   2. PAGE LAYOUT
+   Two columns side by side on desktop
+   Stacks vertically on mobile
+============================================================ */
+
+.page-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+
+/* ============================================================
+   3. LEFT SIDE — BRAND PANEL
+============================================================ */
+
+.brand-panel {
+  flex: 1.1;
+  background: #1e1560;
+  padding: 60px 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Platform wordmark */
+.brand-logo {
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.5px;
+  margin-bottom: 48px;
+}
+
+/* Prototype v1.0 badge under the wordmark */
+.prototype-badge {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* Big headline */
+.brand-headline {
+  font-size: 38px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Amber highlighted words */
+.highlight {
+  color: #f5a623;
+}
+
+/* Description paragraph */
+.brand-description {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.7;
+  max-width: 340px;
+  margin-bottom: 48px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Feature highlights list */
+.brand-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.feature-icon {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.feature-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Decorative blobs — visual only, no content */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.blob-1 {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(61, 47, 217, 0.5), transparent 70%);
+  bottom: -100px;
+  right: -80px;
+}
+
+.blob-2 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(245, 166, 35, 0.12), transparent 70%);
+  top: 40px;
+  right: 30px;
+}
+
+
+/* ============================================================
+   4. RIGHT SIDE — SIGN-IN PANEL
+   Now cleaner and more spacious without email/password fields
+============================================================ */
+
+.signin-panel {
+  flex: 1;
+  background: #f8f7ff;
+  display: flex;
+  align-items: center;       /* Vertically center the content */
+  justify-content: center;   /* Horizontally center the content */
+  padding: 60px 50px;
+}
+
+/* Inner wrapper — controls max width of content */
+.signin-center {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;       /* Center everything horizontally */
+  text-align: center;
+}
+
+/* Small "Welcome 👋" eyebrow text */
+.signin-eyebrow {
+  font-size: 16px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+/* Main heading */
+.signin-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1e1560;
+  margin-bottom: 4px;
+}
+
+/* Subtitle */
+.signin-subtitle {
+  font-size: 15px;
+  color: #aaa;
+  margin-bottom: 24px;
+}
+
+
+/* ============================================================
+   5. VERIFIED BADGE
+============================================================ */
+
+.verified-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3d2fd9;
+  background: #ede9ff;
+  border: 1px solid #d4ccff;
+  border-radius: 20px;
+  padding: 5px 14px;
+  margin-bottom: 32px;
+  transition: transform 0.2s ease;
+}
+
+.verified-badge:hover {
+  transform: translateY(-1px);
+}
+
+
+/* ============================================================
+   6. GOOGLE BUTTON
+   Styled to match official Google sign-in button spec
+   Larger and more prominent now that it's the only action
+============================================================ */
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid #ddd;
+  border-radius: 12px;
+  padding: 15px 20px;        /* More padding — button is more prominent now */
+  font-size: 15px;           /* Slightly larger text */
+  font-weight: 600;
+  color: #333;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+  margin-bottom: 24px;
+}
+
+.google-btn:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  border-color: #bbb;
+  transform: translateY(-1px);  /* Subtle lift on hover */
+}
+
+/* Google G icon size */
+.google-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+
+/* ============================================================
+   7. SMALL TEXT & NOTES
+============================================================ */
+
+/* Note under Google button explaining what happens next */
+.signin-note {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  padding: 0 10px;
+}
+
+/* Legal terms at the very bottom */
+.terms-note {
+  font-size: 11px;
+  color: #bbb;
+  line-height: 1.6;
+}
+
+
+/* ============================================================
+   8. MOBILE RESPONSIVE
+   Below 768px — panels stack vertically
+============================================================ */
+
+@media (max-width: 768px) {
+
+  /* Stack panels vertically */
+  .page-wrapper {
+    flex-direction: column;
+  }
+
+  /* Compact brand panel on mobile */
+  .brand-panel {
+    padding: 40px 28px 36px;
+    justify-content: flex-start;
+  }
+
+  /* Smaller headline on mobile */
+  .brand-headline {
+    font-size: 26px;
+  }
+
+  /* Hide feature list on mobile — keep it clean */
+  /* Show only first feature, hide the other two */
+  .feature-item:nth-child(2),
+  .feature-item:nth-child(3) {
+    display: none;
+  }
+
+  /* Shorter description on mobile */
+  .brand-description {
+    font-size: 14px;
+    margin-bottom: 0;
+  }
+
+  /* Logo spacing */
+  .brand-logo {
+    margin-bottom: 24px;
+  }
+
+  /* Shrink blobs on mobile so they don't overpower */
+  .blob-1 {
+    width: 220px;
+    height: 220px;
+  }
+
+  .blob-2 {
+    width: 120px;
+    height: 120px;
+  }
+
+  /* Sign in panel full padding on mobile */
+  .signin-panel {
+    padding: 40px 28px;
+  }
+
+}
+/* ============================================================
+   9. LOGIN FORM (added for real accounts.login_view)
+   Matches the existing input styling used in profile-setup.css
+   (#e0dcff border, #3d2fd9 focus/primary) for visual consistency.
+============================================================ */
+
+.login-form {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.login-field-group {
+  margin-bottom: 16px;
+}
+
+.login-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 6px;
+}
+
+/* Targets Django's rendered <input> for username/password —
+   AuthenticationForm doesn't let us add classes without a custom
+   widget, so we style by type instead. */
+.login-form input[type="text"],
+.login-form input[type="password"] {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #333;
+  background: #f8f7ff;
+  border: 1.5px solid #e0dcff;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.login-form input[type="text"]:focus,
+.login-form input[type="password"]:focus {
+  border-color: #3d2fd9;
+  background: white;
+}
+
+.login-submit-btn {
+  width: 100%;
+  padding: 15px 20px;
+  background: #3d2fd9;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.login-submit-btn:hover {
+  background: #2f23b0;
+  transform: translateY(-1px);
+}
+
+.login-error {
+  width: 100%;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
