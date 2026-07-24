@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Student Connect</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Our stylesheet -->
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/index.css' %}" />
+</head>
+<body>
+
+  <!-- ============================================================
+       MAIN WRAPPER
+       Holds both left and right panels side by side on desktop
+       Stacks top to bottom on mobile
+  ============================================================ -->
+  <div class="page-wrapper">
+
+
+    <!-- ============================================================
+         LEFT SIDE — Brand Story Panel
+         Static content only — no forms or buttons here
+         (untouched from the prototype — no data here to replace)
+    ============================================================ -->
+    <div class="brand-panel">
+
+      <!-- Platform wordmark -->
+      <div class="brand-logo">
+        🌍 Global Student Connect
+        <!-- Prototype badge — tells reviewers this is v1 -->
+        <span class="prototype-badge">Prototype v1.0</span>
+      </div>
+
+      <!-- Main headline -->
+      <h1 class="brand-headline">
+        Meet students from <span class="highlight">every corner</span> of the world
+      </h1>
+
+      <!-- Short description -->
+      <p class="brand-description">
+        A student-only space to find friends, break language barriers,
+        and build real connections — no matter where you study.
+      </p>
+
+      <!-- Three feature highlights -->
+      <div class="brand-features">
+
+        <div class="feature-item">
+          <span class="feature-icon">🤝</span>
+          <span class="feature-text">Smart student matching</span>
+        </div>
+
+        <div class="feature-item">
+          <span class="feature-icon">🌐</span>
+          <span class="feature-text">Auto language translation</span>
+        </div>
+
+        <div class="feature-item">
+          <span class="feature-icon">👥</span>
+          <span class="feature-text">Group discussions</span>
+        </div>
+
+      </div>
+
+      <!-- Decorative background blobs — purely visual -->
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+
+    </div>
+    <!-- END LEFT SIDE -->
+
+
+    <!-- ============================================================
+         RIGHT SIDE — Sign In Panel
+         DEV LOGIN — real username/password form (accounts.login_view),
+         NOT Google OAuth. Per the team's Phase 1 plan, real Google
+         sign-in is deliberately last (Step 7) so testing isn't blocked
+         on Cloud Console setup. Swap this block for the Google button
+         later without touching anything else on this page.
+    ============================================================ -->
+    <div class="signin-panel">
+
+      <!-- Centered content wrapper -->
+      <div class="signin-center">
+
+        <p class="signin-eyebrow">Welcome 👋</p>
+        <h2 class="signin-title">Sign in to get started</h2>
+        <p class="signin-subtitle">It's free. Students only.</p>
+
+        <!-- Verified students badge -->
+        <div class="verified-badge">
+          🎓 Verified Students Only
+        </div>
+
+        <!-- Non-field errors (e.g. "wrong username or password") -->
+        {% if form.non_field_errors %}
+          <div class="login-error">
+            {% for error in form.non_field_errors %}
+              <p>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" class="login-form">
+          {% csrf_token %}
+
+          <div class="login-field-group">
+            <label class="login-label" for="{{ form.username.id_for_label }}">Username</label>
+            {{ form.username }}
+            {% if form.username.errors %}
+              <p class="login-error">{{ form.username.errors|join:", " }}</p>
+            {% endif %}
+          </div>
+
+          <div class="login-field-group">
+            <label class="login-label" for="{{ form.password.id_for_label }}">Password</label>
+            {{ form.password }}
+            {% if form.password.errors %}
+              <p class="login-error">{{ form.password.errors|join:", " }}</p>
+            {% endif %}
+          </div>
+
+          <button type="submit" class="login-submit-btn">Sign In</button>
+        </form>
+
+        <!-- What happens after sign in — sets expectations -->
+        <p class="signin-note">
+          You'll set up your student profile after signing in
+          (first time only). Dev login for now — university email
+          verification via Google arrives later.
+        </p>
+
+        <!-- Small legal note -->
+        <p class="terms-note">
+          By signing in, you agree to our Terms of Service.<br />
+          Student verification is required to access the platform.
+        </p>
+
+      </div>
+
+    </div>
+    <!-- END RIGHT SIDE -->
+
+
+  </div>
+  <!-- END MAIN WRAPPER -->
+
+</body>
+</html>
