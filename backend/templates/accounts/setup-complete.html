@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Student Connect — All Set!</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+
+  <!-- Reuses profile-setup.css — the .done-screen / .done-summary / .go-home-btn
+       rules already exist there (Section 10), just never had markup pointing
+       at them until now. No new CSS needed for this page. -->
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/profile-setup.css' %}" />
+</head>
+<body>
+
+  <div class="page-wrapper">
+
+    <div class="top-logo">🌍 Global Student Connect</div>
+
+    <div class="step-panel active">
+      <div class="done-screen">
+
+        <div class="done-icon">🎉</div>
+
+        <h2 class="done-title">You're all set, {{ profile.display_name }}!</h2>
+        <p class="done-subtitle">
+          Your profile is ready. Start exploring Student Moments
+          or find your first match on the Connect page.
+        </p>
+
+        <!-- Built from the Profile/Interest rows that were just saved,
+             not localStorage — this is genuinely what's in the database now -->
+        <div class="done-summary">
+
+          <div class="summary-item">
+            <i class="ph-bold ph-globe"></i>
+            <span>{{ profile.country }}</span>
+          </div>
+
+          <div class="summary-item">
+            <i class="ph-bold ph-gender-intersex"></i>
+            <span>{{ profile.gender }}</span>
+          </div>
+
+          <div class="summary-item">
+            <i class="ph-bold ph-translate"></i>
+            <span>{{ profile.primary_language }} &amp; {{ profile.secondary_language }}</span>
+          </div>
+
+          <div class="summary-item">
+            <i class="ph-bold ph-star"></i>
+            <span>
+              {% for interest in interests %}{{ interest.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            </span>
+          </div>
+
+        </div>
+
+        <a href="{% url 'social:home' %}" class="go-home-btn">
+          Go to Home <i class="ph-bold ph-arrow-right"></i>
+        </a>
+
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
