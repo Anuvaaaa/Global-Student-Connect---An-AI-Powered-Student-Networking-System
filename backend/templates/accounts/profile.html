@@ -1,0 +1,497 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title_suffix %} — Profile{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/profile.css' %}" />
+{% endblock %}
+
+{% block assistant_body %}
+<p class="assistant-intro">Hi! Ask me about badges and missions 👋</p>
+      <div class="assistant-chips">
+        <button type="button" class="chip" onclick="askQuestion('How do I earn badges?')">How do I earn badges?</button>
+        <button type="button" class="chip" onclick="askQuestion('What are missions?')">What are missions?</button>
+        <button type="button" class="chip" onclick="askQuestion('When do missions reset?')">When do missions reset?</button>
+      </div>
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="profile-column">
+
+
+      <!-- -------------------------------------------------------------------
+           PROFILE HEADER CARD
+           University / Verified badge only show if actually true —
+           both are unset for every fake-login test user until real
+           Google OAuth (Step 7) exists to verify them.
+      ------------------------------------------------------------------- -->
+      <div class="profile-header-card">
+
+        <div class="header-blob"></div>
+
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar">
+            <i class="ph-bold ph-user"></i>
+          </div>
+          <div class="profile-verified-dot"></div>
+        </div>
+
+        <h1 class="profile-name">{{ profile.display_name }}</h1>
+
+        {% if request.user.university %}
+          <p class="profile-uni">{{ request.user.university.name }}</p>
+        {% endif %}
+
+        <p class="profile-country">{{ profile.country }}</p>
+
+        {% if profile.gender == 'Male' %}
+          <div class="profile-gender-badge" style="display:inline-block;">👨 Male</div>
+        {% elif profile.gender == 'Female' %}
+          <div class="profile-gender-badge" style="display:inline-block;">👩 Female</div>
+        {% endif %}
+
+        {% if request.user.is_verified %}
+          <div class="profile-verified-badge">🎓 Verified Student</div>
+        {% endif %}
+
+        <!-- Edit reuses profile_setup_view — the form already pre-fills
+             from the saved Profile, ?edit=true just tells the view to
+             skip the celebration screen and return here instead -->
+        <a href="{% url 'accounts:profile_setup' %}?edit=true" class="edit-profile-btn">
+          <i class="ph-bold ph-pencil-simple"></i>
+          Edit Profile
+        </a>
+
+      </div>
+
+
+      <!-- -------------------------------------------------------------------
+           INFO CARDS ROW
+      ------------------------------------------------------------------- -->
+      <div class="info-cards-row">
+
+        <div class="info-card">
+          <div class="info-card-title">
+            <i class="ph-bold ph-translate"></i>
+            Languages
+          </div>
+          <div class="info-card-content">
+            {{ profile.primary_language }}{% if profile.secondary_language %} · {{ profile.secondary_language }}{% endif %}
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title">
+            <i class="ph-bold ph-gender-intersex"></i>
+            Gender
+          </div>
+          <div class="info-card-content">{{ profile.gender }}</div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title">
+            <i class="ph-bold ph-globe"></i>
+            Auto Translate
+          </div>
+          <div class="info-card-content">
+            {% if profile.auto_translate %}ON ✅{% else %}OFF ❌{% endif %}
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- -------------------------------------------------------------------
+           INTERESTS SECTION
+      ------------------------------------------------------------------- -->
+      <div class="section-card">
+
+        <div class="section-header">
+          <div class="section-title">
+            <i class="ph-bold ph-star"></i>
+            My Interests
+          </div>
+        </div>
+
+        <div class="interest-tags">
+          {% for interest in interests %}
+            <span class="interest-tag">
+              {% if interest.name == 'Music' %}🎵
+              {% elif interest.name == 'Travel' %}✈️
+              {% elif interest.name == 'Reading' %}📚
+              {% elif interest.name == 'Photography' %}📸
+              {% elif interest.name == 'Art & Design' %}🎨
+              {% elif interest.name == 'Cricket' %}🏏
+              {% elif interest.name == 'Football' %}⚽
+              {% elif interest.name == 'Badminton' %}🏸
+              {% elif interest.name == 'Cooking' %}🍳
+              {% elif interest.name == 'Coding' %}💻
+              {% elif interest.name == 'Movies & TV' %}🎬
+              {% elif interest.name == 'Gaming' %}🎮
+              {% endif %} {{ interest.name }}
+            </span>
+          {% empty %}
+            <p class="no-data-msg">No interests set. Edit your profile to add some!</p>
+          {% endfor %}
+        </div>
+
+      </div>
+
+
+      <!-- -------------------------------------------------------------------
+           BADGES SECTION
+           15 real Badge rows (5 concepts x Bronze/Silver/Gold) collapsed
+           into 5 display rows — each shows the highest tier earned so
+           far plus progress toward the next one, via
+           engagement.utils.get_badge_progress().
+      ------------------------------------------------------------------- -->
+      <div class="section-card">
+
+        <div class="section-header">
+          <div class="section-title">
+            <i class="ph-bold ph-medal"></i>
+            Badges
+          </div>
+          <div class="section-count">{{ earned_group_count }} / {{ total_badge_groups }} earned</div>
+        </div>
+
+        <div class="badges-grid">
+          {% for row in badge_rows %}
+            <div class="badge-item {% if row.is_earned %}earned{% else %}locked{% endif %}">
+              <div class="badge-icon">{{ row.icon }}</div>
+              <div class="badge-body">
+                <div class="badge-name">
+                  {{ row.display_badge.name }} — {{ row.display_badge.get_tier_display }}
+                  {% if row.highest_earned and not row.is_maxed %}
+                    <span class="badge-current-tier">(currently {{ row.highest_earned.get_tier_display }})</span>
+                  {% endif %}
+                </div>
+                <div class="badge-desc">{{ row.display_badge.description }}</div>
+
+                {% if row.is_maxed %}
+                  <div class="badge-earned-status">✅ Gold Earned</div>
+                {% else %}
+                  <div class="badge-progress-wrap">
+                    <div class="badge-progress-bar">
+                      <div class="badge-progress-fill" style="width:{{ row.pct }}%"></div>
+                    </div>
+                    <div class="badge-progress-label">{{ row.current_value }} / {{ row.target }}</div>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% empty %}
+            <p class="no-data-msg">No badges seeded yet — add them in /admin/.</p>
+          {% endfor %}
+        </div>
+
+      </div>
+
+
+      <!-- -------------------------------------------------------------------
+           MISSIONS SECTION
+           Real Mission/UserMissionProgress data via
+           engagement.utils.get_mission_progress(). Will correctly show
+           0 progress for everyone right now — nothing in matching/chat
+           calls record_mission_progress() yet, since those apps are
+           still placeholder stubs. That's the true current state of
+           the data, not a bug in this page.
+      ------------------------------------------------------------------- -->
+      <div class="section-card">
+
+        <div class="section-header">
+          <div class="section-title">
+            <i class="ph-bold ph-flag"></i>
+            Missions
+          </div>
+        </div>
+
+        <div class="mission-group">
+          <div class="mission-group-label">
+            <i class="ph-bold ph-sun"></i>
+            Daily Missions
+            <span class="mission-refresh">
+              Resets in <span id="dailyReset">--:--:--</span>
+            </span>
+          </div>
+
+          {% for row in daily_missions %}
+            <div class="mission-item">
+              <div class="mission-info">
+                <div class="mission-name">{{ row.mission.name }}</div>
+                <div class="mission-reward">{{ row.mission.description }}</div>
+              </div>
+              <div class="mission-progress-wrap">
+                <div class="mission-bar">
+                  <div class="mission-fill" style="width:{{ row.pct }}%"></div>
+                </div>
+                <div class="mission-count">{{ row.progress }} / {{ row.target }}</div>
+              </div>
+            </div>
+          {% empty %}
+            <p class="no-data-msg">No daily missions seeded yet.</p>
+          {% endfor %}
+        </div>
+
+        <div class="mission-group">
+          <div class="mission-group-label">
+            <i class="ph-bold ph-calendar"></i>
+            Weekly Missions
+            <span class="mission-refresh">
+              Resets in <span id="weeklyReset">-- days</span>
+            </span>
+          </div>
+
+          {% for row in weekly_missions %}
+            <div class="mission-item">
+              <div class="mission-info">
+                <div class="mission-name">{{ row.mission.name }}</div>
+                <div class="mission-reward">{{ row.mission.description }}</div>
+              </div>
+              <div class="mission-progress-wrap">
+                <div class="mission-bar">
+                  <div class="mission-fill" style="width:{{ row.pct }}%"></div>
+                </div>
+                <div class="mission-count">{{ row.progress }} / {{ row.target }}</div>
+              </div>
+            </div>
+          {% empty %}
+            <p class="no-data-msg">No weekly missions seeded yet.</p>
+          {% endfor %}
+        </div>
+
+      </div>
+
+
+      <!-- -------------------------------------------------------------------
+           ACCOUNT SETTINGS — real forms now, each posts to its own
+           small view and redirects back here. No AJAX — plain POST +
+           redirect, consistent with every other action in this app.
+      ------------------------------------------------------------------- -->
+      <div class="section-card settings-card">
+
+        <div class="section-header settings-header" onclick="toggleSettings()">
+          <div class="section-title">
+            <i class="ph-bold ph-gear"></i>
+            Account Settings
+          </div>
+          <i class="ph-bold ph-caret-down settings-caret" id="settingsCaret"></i>
+        </div>
+
+        <div class="settings-body" id="settingsBody">
+
+          <!-- Display Name -->
+          <div class="settings-item">
+            <label class="settings-label" for="settingsName">Display Name</label>
+            <form method="post" action="{% url 'accounts:update_display_name' %}" class="settings-row">
+              {% csrf_token %}
+              <input
+                type="text"
+                name="display_name"
+                class="settings-input"
+                id="settingsName"
+                value="{{ profile.display_name }}"
+                placeholder="Your display name"
+              />
+              <button type="submit" class="settings-save-btn">Save</button>
+            </form>
+          </div>
+
+          <div class="settings-divider"></div>
+
+          <!-- Auto Translation toggle — a real <button type="submit">
+               styled to look identical to the old div toggle, so
+               clicking it fires an actual POST instead of just a
+               visual class flip -->
+          <div class="settings-item">
+            <label class="settings-label">Auto Translation</label>
+            <p class="settings-hint">
+              Automatically translate incoming messages
+            </p>
+            <form method="post" action="{% url 'accounts:toggle_auto_translate' %}">
+              {% csrf_token %}
+              <div class="toggle-row">
+                <span class="toggle-label">{% if profile.auto_translate %}ON{% else %}OFF{% endif %}</span>
+                <button type="submit" class="toggle-track-btn {% if profile.auto_translate %}active{% endif %}" aria-label="Toggle auto translate">
+                  <span class="toggle-thumb"></span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="settings-divider"></div>
+
+          <!-- Translate Into — only shown when auto-translate is on.
+               Selecting a radio submits immediately, matching the
+               original's instant-save feel without needing AJAX. -->
+          {% if profile.auto_translate %}
+            <div class="settings-item" id="translateIntoSection">
+              <label class="settings-label">Translate Messages Into</label>
+              <p class="settings-hint">
+                Choose which of your languages incoming messages are translated to
+              </p>
+
+              <form method="post" action="{% url 'accounts:update_translate_into' %}" class="translate-options">
+                {% csrf_token %}
+                <label class="translate-option">
+                  <input
+                    type="radio" name="translate_into" value="{{ profile.primary_language }}"
+                    {% if profile.translate_into == profile.primary_language %}checked{% endif %}
+                    onchange="this.form.submit()"
+                  />
+                  <span class="translate-option-label">{{ profile.primary_language }} (Primary)</span>
+                </label>
+
+                {% if profile.secondary_language %}
+                  <label class="translate-option">
+                    <input
+                      type="radio" name="translate_into" value="{{ profile.secondary_language }}"
+                      {% if profile.translate_into == profile.secondary_language %}checked{% endif %}
+                      onchange="this.form.submit()"
+                    />
+                    <span class="translate-option-label">{{ profile.secondary_language }} (Secondary)</span>
+                  </label>
+                {% endif %}
+              </form>
+            </div>
+
+            <div class="settings-divider"></div>
+          {% endif %}
+
+          <!-- Delete Account -->
+          <div class="settings-item">
+            <label class="settings-label delete-label">Delete Account</label>
+            <p class="settings-hint">
+              This will permanently delete your account and all your data.
+              This action cannot be undone.
+            </p>
+
+            <button type="button" class="delete-btn" onclick="confirmDelete()">
+              <i class="ph-bold ph-trash"></i>
+              Delete My Account
+            </button>
+
+            <div class="delete-confirm" id="deleteConfirm">
+              <p class="delete-confirm-text">Are you sure? This cannot be undone.</p>
+              <div class="delete-confirm-btns">
+                <form method="post" action="{% url 'accounts:delete_account' %}">
+                  {% csrf_token %}
+                  <button type="submit" class="delete-confirm-yes">Yes, Delete</button>
+                </form>
+                <button type="button" class="delete-confirm-no" onclick="cancelDelete()">Cancel</button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+        <!-- END SETTINGS BODY -->
+
+      </div>
+
+
+      <!-- -------------------------------------------------------------------
+           SIGN OUT BUTTON
+      ------------------------------------------------------------------- -->
+      <div class="danger-zone">
+        <a href="{% url 'accounts:logout' %}" class="signout-btn">
+          <i class="ph-bold ph-sign-out"></i>
+          Sign Out
+        </a>
+      </div>
+
+
+    </div>
+  </main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    // -------------------------------------------------------
+    // MISSION RESET COUNTDOWN — pure UI clock, no data
+    // involved, kept exactly as the prototype had it
+    // -------------------------------------------------------
+    function updateResetTimers() {
+      const now = new Date();
+
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0);
+      const diffD = midnight - now;
+      const dH = Math.floor(diffD / 3600000);
+      const dM = Math.floor((diffD % 3600000) / 60000);
+      const dS = Math.floor((diffD % 60000) / 1000);
+      const dailyEl = document.getElementById('dailyReset');
+      if (dailyEl) {
+        dailyEl.textContent =
+          String(dH).padStart(2, '0') + ':' +
+          String(dM).padStart(2, '0') + ':' +
+          String(dS).padStart(2, '0');
+      }
+
+      const nextMonday = new Date();
+      const dow = now.getDay();
+      const daysUntil = dow === 1 ? 7 : (8 - dow) % 7;
+      nextMonday.setDate(now.getDate() + daysUntil);
+      nextMonday.setHours(0, 0, 0, 0);
+      const wDays = Math.floor((nextMonday - now) / 86400000);
+      const weeklyEl = document.getElementById('weeklyReset');
+      if (weeklyEl) {
+        weeklyEl.textContent = wDays === 1 ? '1 day' : wDays + ' days';
+      }
+    }
+
+    updateResetTimers();
+    setInterval(updateResetTimers, 1000);
+
+
+    // -------------------------------------------------------
+    // ACCOUNT SETTINGS — Accordion (pure UI, unchanged)
+    // -------------------------------------------------------
+    let settingsOpen = false;
+
+    function toggleSettings() {
+      settingsOpen = !settingsOpen;
+      const body = document.getElementById('settingsBody');
+      const caret = document.getElementById('settingsCaret');
+
+      if (settingsOpen) {
+        body.style.display = 'block';
+        caret.style.transform = 'rotate(180deg)';
+      } else {
+        body.style.display = 'none';
+        caret.style.transform = 'rotate(0deg)';
+      }
+    }
+
+
+    // -------------------------------------------------------
+    // DELETE ACCOUNT — confirm/cancel is pure UI; the actual
+    // delete is a real form submit now (see the form above),
+    // not a JS function
+    // -------------------------------------------------------
+    function confirmDelete() {
+      document.getElementById('deleteConfirm').style.display = 'block';
+    }
+
+    function cancelDelete() {
+      document.getElementById('deleteConfirm').style.display = 'none';
+    }
+
+
+    // -------------------------------------------------------
+    // PLATFORM ASSISTANT
+    // -------------------------------------------------------
+    const answers = {
+      'How do I earn badges?':
+        'Badges are earned by hitting milestones — like sending messages for Social Butterfly, or chatting with students from different countries for Global Explorer. Each has Bronze, Silver, and Gold tiers! 🏅',
+      'What are missions?':
+        'Missions are daily and weekly tasks that help you progress toward badges. Daily missions reset at midnight, weekly missions reset every Monday. 📋',
+      'When do missions reset?':
+        'Daily missions reset at midnight every night. Weekly missions reset every Monday. Your badge progress never resets — it keeps accumulating! 🔄'
+    };
+
+</script>
+{% endblock %}
