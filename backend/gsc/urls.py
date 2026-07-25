@@ -6,11 +6,10 @@ urlpatterns = [
 
     path('', include('accounts.urls')),
     path('', include('engagement.urls')),
+    path('', include('social.urls')),      # placeholder — real one from Person B
+    path('', include('matching.urls')),    # placeholder — real one from Person C
+    path('', include('chat.urls')),        # placeholder — real one from Person C
 
-    # Uncomment each as Person B / Person C add their own urls.py —
-    # doing it now would crash the server since those files don't exist yet.
-    # path('', include('social.urls')),
-    # path('', include('matching.urls')),
-    # path('', include('chat.urls')),
+    # moderation has no page of its own (per the brief) — nothing to include yet
     # path('', include('moderation.urls')),
 ]

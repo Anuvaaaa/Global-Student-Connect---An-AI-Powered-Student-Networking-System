@@ -1,0 +1,285 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Student Connect{% block title_suffix %}{% endblock %}</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Phosphor Icons via jsDelivr — version locked at 2.1.1 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+
+  <!-- Shared base styles -->
+  <link rel="stylesheet" href="{% static 'css/shared-sidebar.css' %}" />
+
+  <!-- Page-specific styles -->
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- =====================================================================
+       SIDEBAR — Desktop only
+       Fixed to the left side, hidden on mobile via CSS
+  ===================================================================== -->
+  <nav class="sidebar">
+
+    <div class="sidebar-logo">🌍</div>
+
+    <div class="nav-items">
+
+      <a href="{% url 'social:home' %}" class="nav-item {% if active_page == 'home' %}active{% endif %}">
+        <i class="ph-bold ph-house"></i>
+        <span class="tooltip">Home</span>
+      </a>
+
+      <a href="{% url 'matching:connect' %}" class="nav-item {% if active_page == 'connect' %}active{% endif %}">
+        <i class="ph-bold ph-handshake"></i>
+        <span class="tooltip">Connect</span>
+      </a>
+
+      <!-- Post Moment button — only opens the modal directly on the home page;
+           everywhere else it's a plain link back to home (matches prototype behavior) -->
+      {% if active_page == 'home' %}
+      <button type="button" class="nav-item post-btn" onclick="openPostModal()">
+        <div class="post-circle-sidebar">
+          <i class="ph-bold ph-plus"></i>
+        </div>
+        <span class="tooltip">Post Moment</span>
+      </button>
+      {% else %}
+      <a href="{% url 'social:home' %}" class="nav-item post-btn">
+        <div class="post-circle-sidebar">
+          <i class="ph-bold ph-plus"></i>
+        </div>
+        <span class="tooltip">Post Moment</span>
+      </a>
+      {% endif %}
+
+      <a href="{% url 'chat:inbox' %}" class="nav-item {% if active_page == 'chat' %}active{% endif %}">
+        <i class="ph-bold ph-chat-circle"></i>
+        <span class="tooltip">Chats</span>
+      </a>
+
+      <a href="{% url 'accounts:profile' %}" class="nav-item {% if active_page == 'profile' %}active{% endif %}">
+        <i class="ph-bold ph-user-circle"></i>
+        <span class="tooltip">Profile</span>
+      </a>
+
+    </div>
+
+    <!-- Bottom of sidebar — avatar and notification bell -->
+    <div class="sidebar-bottom">
+
+      <div class="avatar-wrap">
+        <div class="user-avatar">
+          <i class="ph-bold ph-user"></i>
+        </div>
+        <div class="verified-dot"></div>
+      </div>
+
+      <a href="{% url 'engagement:notifications' %}" class="notif-icon" id="sidebarBell">
+        <i class="ph-bold ph-bell"></i>
+        <span class="notif-badge" id="sidebarBadge">0</span>
+      </a>
+
+    </div>
+  </nav>
+  <!-- END SIDEBAR -->
+
+
+  <!-- =====================================================================
+       MAIN CONTENT — page-specific
+  ===================================================================== -->
+  {% block content %}{% endblock %}
+  <!-- END MAIN CONTENT -->
+
+
+  <!-- =====================================================================
+       FLOATING ASSISTANT BUTTON
+  ===================================================================== -->
+  <button type="button" class="floating-assistant" onclick="toggleAssistant()" aria-label="Open platform assistant">
+    <i class="ph-bold ph-robot"></i>
+  </button>
+
+
+  <!-- =====================================================================
+       ASSISTANT PANEL
+       Intro text and quick-question chips are page-specific
+  ===================================================================== -->
+  <div class="assistant-panel" id="assistantPanel">
+
+    <div class="assistant-header">
+      <div class="assistant-title">
+        <i class="ph-bold ph-robot"></i>
+        Platform Assistant
+      </div>
+      <button type="button" class="assistant-close" onclick="toggleAssistant()" aria-label="Close assistant">
+        <i class="ph-bold ph-x"></i>
+      </button>
+    </div>
+
+    <div class="assistant-body">
+      {% block assistant_body %}
+      <p class="assistant-intro">Hi! Ask me anything about the platform 👋</p>
+      {% endblock %}
+      <div class="assistant-messages" id="assistantMessages"></div>
+    </div>
+
+    <div class="assistant-input-row">
+      <input
+        type="text"
+        class="assistant-input"
+        id="assistantInput"
+        placeholder="Ask a question..."
+        onkeydown="if(event.key==='Enter') sendQuestion()"
+      />
+      <button type="button" class="assistant-send" onclick="sendQuestion()">
+        <i class="ph-bold ph-paper-plane-tilt"></i>
+      </button>
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================================
+       MOBILE TOP BAR — shown only on mobile
+  ===================================================================== -->
+  <header class="mobile-topbar">
+    <div class="mobile-logo">🌍 Global<span>.SC</span></div>
+    <a href="{% url 'engagement:notifications' %}" class="mobile-bell">
+      <i class="ph-bold ph-bell"></i>
+      <span class="notif-badge mobile-badge" id="mobileBadge">0</span>
+    </a>
+  </header>
+
+
+  <!-- =====================================================================
+       BOTTOM NAV — Mobile only
+  ===================================================================== -->
+  <nav class="bottom-nav">
+
+    <a href="{% url 'social:home' %}" class="bottom-nav-item {% if active_page == 'home' %}active{% endif %}">
+      <i class="ph-bold ph-house"></i>
+      <span>Home</span>
+    </a>
+
+    <a href="{% url 'matching:connect' %}" class="bottom-nav-item {% if active_page == 'connect' %}active{% endif %}">
+      <i class="ph-bold ph-handshake"></i>
+      <span>Connect</span>
+    </a>
+
+    {% if active_page == 'home' %}
+    <button type="button" class="bottom-nav-post" onclick="openPostModal()">
+      <div class="post-circle-mobile">
+        <i class="ph-bold ph-plus"></i>
+      </div>
+      <span>Post</span>
+    </button>
+    {% else %}
+    <a href="{% url 'social:home' %}" class="bottom-nav-post">
+      <div class="post-circle-mobile">
+        <i class="ph-bold ph-plus"></i>
+      </div>
+      <span>Post</span>
+    </a>
+    {% endif %}
+
+    <a href="{% url 'chat:inbox' %}" class="bottom-nav-item {% if active_page == 'chat' %}active{% endif %}">
+      <i class="ph-bold ph-chat-circle"></i>
+      <span>Chats</span>
+    </a>
+
+    <a href="{% url 'accounts:profile' %}" class="bottom-nav-item {% if active_page == 'profile' %}active{% endif %}">
+      <i class="ph-bold ph-user-circle"></i>
+      <span>Profile</span>
+    </a>
+
+  </nav>
+
+
+  <!-- =====================================================================
+       PAGE-SPECIFIC MODALS (post moment, delete confirm, etc.)
+  ===================================================================== -->
+  {% block modals %}{% endblock %}
+
+
+  <!-- =====================================================================
+       SHARED JAVASCRIPT
+       Notification badge sync + assistant panel logic.
+       Identical across every page in the prototype — kept here once.
+       Each page still defines its own `answers` object in extra_js.
+  ===================================================================== -->
+  <script>
+
+    // -------------------------------------------------------
+    // NOTIFICATION BADGE COUNT
+    // Still localStorage-based for now — wiring this to a real
+    // unread count needs a Django context processor (touches
+    // every page via settings.py, not just one view), which is
+    // a deliberate separate step, not done yet.
+    // -------------------------------------------------------
+    function updateNotifBadge() {
+      const count = parseInt(localStorage.getItem('unreadNotifs') || '3');
+      ['sidebarBadge', 'headerBadge', 'mobileBadge'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = count;
+        el.style.display = count > 0 ? 'flex' : 'none';
+      });
+    }
+
+    if (!localStorage.getItem('unreadNotifs')) {
+      localStorage.setItem('unreadNotifs', '3');
+    }
+
+    updateNotifBadge();
+
+
+    // -------------------------------------------------------
+    // PLATFORM ASSISTANT
+    // Each page defines its own `answers` object before this
+    // script runs (see block extra_js)
+    // -------------------------------------------------------
+    function toggleAssistant() {
+      document.getElementById('assistantPanel').classList.toggle('open');
+    }
+
+    function askQuestion(question) {
+      addMessage(question, 'user');
+      setTimeout(() => {
+        const reply = (typeof answers !== 'undefined' && answers[question])
+          || "Try asking about matching, translation, badges, or groups!";
+        addMessage(reply, 'bot');
+      }, 600);
+    }
+
+    function sendQuestion() {
+      const input = document.getElementById('assistantInput');
+      const text = input.value.trim();
+      if (!text) return;
+      addMessage(text, 'user');
+      input.value = '';
+      setTimeout(() => {
+        addMessage("In the full platform, our AI assistant would answer this in detail. 🤖", 'bot');
+      }, 600);
+    }
+
+    function addMessage(text, sender) {
+      const messages = document.getElementById('assistantMessages');
+      const msg = document.createElement('div');
+      msg.className = 'assistant-msg ' + sender;
+      msg.textContent = text;
+      messages.appendChild(msg);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+  </script>
+
+  <!-- Page-specific JavaScript -->
+  {% block extra_js %}{% endblock %}
+
+</body>
+</html>

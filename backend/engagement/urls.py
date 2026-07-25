@@ -7,5 +7,6 @@ app_name = 'engagement'
 urlpatterns = [
     path('notifications/', views.notifications_view, name='notifications'),
     path('notifications/<int:notification_id>/read/', views.mark_notification_read_view, name='mark_read'),
+    path('notifications/<int:notification_id>/open/', views.open_notification_view, name='open_notification'),
     path('notifications/mark-all-read/', views.mark_all_read_view, name='mark_all_read'),
 ]

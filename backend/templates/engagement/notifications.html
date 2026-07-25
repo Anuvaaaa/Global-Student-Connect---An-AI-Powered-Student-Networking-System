@@ -19,19 +19,23 @@
 {% block content %}
 <main class="main-content">
     <div class="notif-column">
- 
+
       <!-- Page header -->
       <div class="page-header">
         <div>
           <h1 class="page-title">Notifications</h1>
           <p class="page-subtitle">Stay up to date with your matches, messages, and badges.</p>
         </div>
-        <button type="button" class="mark-all-btn" onclick="markAllRead()">
-          Mark all read
-        </button>
+        <form method="post" action="{% url 'engagement:mark_all_read' %}">
+          {% csrf_token %}
+          <button type="submit" class="mark-all-btn">Mark all read</button>
+        </form>
       </div>
- 
-      <!-- Filter tabs -->
+
+      <!-- Filter tabs — stays client-side JS, all notifications are
+           already rendered below with data-type attributes; no reason
+           to round-trip to the server just to filter what's already
+           on the page -->
       <div class="filter-tabs">
         <button type="button" class="filter-tab active" onclick="setFilter('all', this)">All</button>
         <button type="button" class="filter-tab" onclick="setFilter('match', this)">Matches</button>
@@ -39,17 +43,83 @@
         <button type="button" class="filter-tab" onclick="setFilter('badge', this)">Badges</button>
         <button type="button" class="filter-tab" onclick="setFilter('mission', this)">Missions</button>
       </div>
- 
-      <!-- Notification list — built by JS -->
-      <div class="notif-list" id="notifList"></div>
- 
-      <!-- Empty state -->
-      <div class="empty-state" id="emptyState">
+
+      <!-- Notification list — real data, grouped by real date -->
+      <div class="notif-list" id="notifList">
+        {% regroup notif_list by date_label as date_groups %}
+        {% for group in date_groups %}
+
+          <div class="date-divider">
+            <div class="divider-line"></div>
+            <span class="divider-label">{{ group.grouper }}</span>
+            <div class="divider-line"></div>
+          </div>
+
+          {% for item in group.list %}
+            {% with notif=item.notif %}
+              <!-- Hidden form for the card-body click (mark read, stay
+                   on page). Separate from the CTA link below it, so
+                   clicking the CTA doesn't also trigger this. -->
+              <form method="post" action="{% url 'engagement:mark_read' notif.id %}" id="markread-form-{{ notif.id }}" style="display:none;">
+                {% csrf_token %}
+              </form>
+
+              <div
+                class="notif-card {% if not notif.is_read %}unread{% endif %}"
+                data-type="{{ notif.type }}"
+                onclick="document.getElementById('markread-form-{{ notif.id }}').submit()"
+              >
+
+                <div class="notif-icon-wrap
+                  {% if notif.type == 'match' %}icon-match
+                  {% elif notif.type == 'group' %}icon-group
+                  {% elif notif.type == 'message' %}icon-message
+                  {% elif notif.type == 'badge' %}icon-badge
+                  {% elif notif.type == 'mission' %}icon-mission
+                  {% else %}icon-system{% endif %}">
+                  <i class="ph-bold
+                    {% if notif.type == 'match' %}ph-handshake
+                    {% elif notif.type == 'group' %}ph-users-three
+                    {% elif notif.type == 'message' %}ph-chat-circle
+                    {% elif notif.type == 'badge' %}ph-medal
+                    {% elif notif.type == 'mission' %}ph-flag
+                    {% else %}ph-megaphone{% endif %}"></i>
+                </div>
+
+                <div class="notif-body">
+                  <div class="notif-title">{{ notif.title }}</div>
+                  <div class="notif-desc">{{ notif.description }}</div>
+
+                  {% if notif.cta_href %}
+                    <a
+                      href="{% url 'engagement:open_notification' notif.id %}"
+                      class="notif-cta"
+                      onclick="event.stopPropagation()"
+                    >{{ notif.cta_label|default:"View" }}</a>
+                  {% endif %}
+                </div>
+
+                <div class="notif-right">
+                  <div class="notif-time">{{ notif.created_at|timesince }} ago</div>
+                  {% if not notif.is_read %}
+                    <div class="unread-dot"></div>
+                  {% endif %}
+                </div>
+
+              </div>
+            {% endwith %}
+          {% endfor %}
+
+        {% endfor %}
+      </div>
+
+      <!-- Empty state — shown by JS if the real list is genuinely empty -->
+      <div class="empty-state" id="emptyState" style="display: {% if not notif_list %}flex{% else %}none{% endif %};">
         <div class="empty-icon">🔔</div>
         <div class="empty-title">All caught up!</div>
         <p class="empty-desc">No notifications here yet. Start connecting with students to see activity.</p>
       </div>
- 
+
     </div>
   </main>
 {% endblock %}
@@ -57,296 +127,48 @@
 {% block extra_js %}
 <script>
 
- 
     // -------------------------------------------------------
-    // NOTIFICATION TYPE CONFIG
-    // -------------------------------------------------------
-    const TYPE_ICON = {
-      match:   'ph-handshake',
-      group:   'ph-users-three',
-      message: 'ph-chat-circle',
-      badge:   'ph-medal',
-      mission: 'ph-flag',
-      system:  'ph-megaphone'
-    };
- 
-    const TYPE_COLOR = {
-      match:   'icon-match',
-      group:   'icon-group',
-      message: 'icon-message',
-      badge:   'icon-badge',
-      mission: 'icon-mission',
-      system:  'icon-system'
-    };
-
-    function getNotifications() {
-        return JSON.parse(localStorage.getItem('notifications') || '[]');
-    }
-
-   function saveNotifications(data) {
-       localStorage.setItem('notifications', JSON.stringify(data));
-    }
- 
- 
-    // -------------------------------------------------------
-    // SEED DEMO NOTIFICATIONS
-    // Only runs if localStorage has none yet
-    // In real project connect.html and converse.html push here
-    // -------------------------------------------------------
-    function seedDemoNotifications() {
-      const existing = getNotifications();
-      if (existing.length > 0) return;
- 
-      const demos = [
-        {
-          id:     'notif_001',
-          type:   'match',
-          title:  'New match! 🎉',
-          desc:   'You matched with Yuki Tanaka from Tokyo University.',
-          time:   'Just now',
-          unread: true,
-          cta:    { label: 'Start Chat', href: '/converse/?user=jp_yuki_001&name=Yuki+Tanaka&flag=🇯🇵&uni=Tokyo+University&country=Japan&interests=Music,Coding,Gaming&score=88' }
-        },
-        {
-          id:     'notif_002',
-          type:   'match',
-          title:  'New match! 🎉',
-          desc:   'You matched with Camille Dubois from Sorbonne University.',
-          time:   '2h ago',
-          unread: true,
-          cta:    { label: 'Start Chat', href: '/converse/?user=fr_camille_004&name=Camille+Dubois&flag=🇫🇷&uni=Sorbonne+University&country=France&interests=Art+%26+Design,Travel,Photography&score=82' }
-        },
-        {
-          id:     'notif_003',
-          type:   'group',
-          title:  'You joined a group',
-          desc:   'Welcome to Global Tech Enthusiasts! Say hi to the group.',
-          time:   '2h ago',
-          unread: true,
-          cta:    { label: 'Open Group', href: '/group-converse/?group=group_tech_001&name=Global+Tech+Enthusiasts' }
-        },
-        {
-          id:     'notif_004',
-          type:   'message',
-          title:  'New message from Yuki',
-          desc:   'Hi! We just got matched 😊 Really happy to meet you!',
-          time:   '1h ago',
-          unread: false,
-          cta:    { label: 'Reply', href: '/converse/?user=jp_yuki_001&name=Yuki+Tanaka&flag=🇯🇵&uni=Tokyo+University&country=Japan&interests=Music,Coding,Gaming&score=88' }
-        },
-        {
-          id:     'notif_005',
-          type:   'badge',
-          title:  'Badge unlocked 🏅',
-          desc:   'You earned First Friend — your journey starts here!',
-          time:   '2h ago',
-          unread: false,
-          cta:    { label: 'View Badge', href: '/profile/' }
-        },
-        {
-          id:     'notif_006',
-          type:   'mission',
-          title:  'Mission complete 🎯',
-          desc:   'You finished "Start a new conversation" — keep going!',
-          time:   'Yesterday',
-          unread: false,
-          cta:    null
-        },
-        {
-          id:     'notif_007',
-          type:   'system',
-          title:  'Welcome to Global Student Connect 🌍',
-          desc:   'Your profile is live! Head to Connect to find your first match.',
-          time:   'Yesterday',
-          unread: false,
-          cta:    { label: 'Find a Match', href: '/connect/' }
-        }
-      ];
- 
-      saveNotifications(demos);
-    }
- 
-    seedDemoNotifications();
- 
- 
-    // -------------------------------------------------------
-    // BADGE COUNTER
-    // -------------------------------------------------------
-    function countUnread() {
-      return getNotifications()
-        .filter(n => n.unread).length;
-    }
- 
-    function updateNotifBadge() {
-      const count = countUnread();
-      ['sidebarBadge', 'mobileBadge'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.textContent   = count;
-        el.style.display = count > 0 ? 'flex' : 'none';
-      });
-      localStorage.setItem('unreadNotifs', count);
-    }
- 
-    updateNotifBadge();
- 
- 
-    // -------------------------------------------------------
-    // RENDER LIST
+    // FILTER TABS — pure client-side show/hide, same as the
+    // prototype, just filtering real server-rendered cards
+    // instead of JS-built ones
     // -------------------------------------------------------
     let activeFilter = 'all';
- 
-    function render() {
-      const notifs = getNotifications();
-      const list     = document.getElementById('notifList');
-      const empty    = document.getElementById('emptyState');
-      list.innerHTML = '';
- 
-      const filtered = activeFilter === 'all'
-        ? notifs
-        : notifs.filter(n => n.type === activeFilter);
- 
-      if (filtered.length === 0) {
-        empty.style.display = 'flex';
-        return;
-      }
- 
-      empty.style.display = 'none';
- 
-      // Date dividers
-      let lastLabel = '';
-      filtered.forEach(notif => {
-        const label = getDateLabel(notif.time);
-        if (label !== lastLabel) {
-          lastLabel = label;
-          const divider = document.createElement('div');
-          divider.className = 'date-divider';
-          divider.innerHTML =
-            '<div class="divider-line"></div>' +
-            '<span class="divider-label">' + label + '</span>' +
-            '<div class="divider-line"></div>';
-          list.appendChild(divider);
-        }
-        list.appendChild(buildCard(notif));
-      });
-    }
- 
- 
-    // -------------------------------------------------------
-    // BUILD ONE CARD
-    // -------------------------------------------------------
-    function buildCard(notif) {
-      const card = document.createElement('div');
-      card.className = 'notif-card' + (notif.unread ? ' unread' : '');
-      card.onclick   = () => markRead(notif.id);
- 
-      // Icon
-      const iconWrap = document.createElement('div');
-      iconWrap.className = 'notif-icon-wrap ' + (TYPE_COLOR[notif.type] || 'icon-system');
-      const icon = document.createElement('i');
-      icon.className = 'ph-bold ' + (TYPE_ICON[notif.type] || 'ph-bell');
-      iconWrap.appendChild(icon);
- 
-      // Body
-      const body = document.createElement('div');
-      body.className = 'notif-body';
- 
-      const title = document.createElement('div');
-      title.className   = 'notif-title';
-      title.textContent = notif.title;
- 
-      const desc = document.createElement('div');
-      desc.className   = 'notif-desc';
-      desc.textContent = notif.desc;
- 
-      body.appendChild(title);
-      body.appendChild(desc);
- 
-      if (notif.cta) {
-        const cta = document.createElement('a');
-        cta.className   = 'notif-cta';
-        cta.href        = notif.cta.href;
-        cta.textContent = notif.cta.label;
-        cta.onclick     = function(e){
-            e.stopPropagation();
-            markRead(notif.id);
-        };
-        body.appendChild(cta);
-      }
- 
-      // Time + unread dot
-      const right = document.createElement('div');
-      right.className = 'notif-right';
- 
-      const time = document.createElement('div');
-      time.className   = 'notif-time';
-      time.textContent = notif.time;
- 
-      right.appendChild(time);
- 
-      if (notif.unread) {
-        const dot = document.createElement('div');
-        dot.className = 'unread-dot';
-        right.appendChild(dot);
-      }
- 
-      card.appendChild(iconWrap);
-      card.appendChild(body);
-      card.appendChild(right);
- 
-      return card;
-    }
- 
- 
-    // -------------------------------------------------------
-    // DATE LABEL
-    // -------------------------------------------------------
-    function getDateLabel(timeStr) {
-      if (!timeStr) return 'Earlier';
-      const t = timeStr.toLowerCase();
-      if (t === 'just now' || t.includes('h ago') || t.includes('min')) return 'Today';
-      if (t === 'yesterday') return 'Yesterday';
-      return 'Earlier';
-    }
- 
- 
-    // -------------------------------------------------------
-    // MARK READ
-    // -------------------------------------------------------
-    function markRead(id) {
-      const notifs  = JSON.parse(localStorage.getItem('notifications') || '[]');
-      const updated = notifs.map(n => n.id === id ? { ...n, unread: false } : n);
-      localStorage.setItem('notifications', JSON.stringify(updated));
-      updateNotifBadge();
-      render();
-    }
- 
-    function markAllRead() {
-      const notifs = getNotifications();
-      const updated = notifs.map(n => ({ ...n, unread: false }));
-      saveNotifications(updated);
-      updateNotifBadge();
-      render();
-    }
- 
- 
-    // -------------------------------------------------------
-    // FILTER TABS
-    // -------------------------------------------------------
+
     function setFilter(type, btn) {
       activeFilter = type;
       document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
       btn.classList.add('active');
-      render();
+      applyFilter();
     }
- 
- 
-    // -------------------------------------------------------
-    // INITIAL RENDER
-    // -------------------------------------------------------
-    render();
- 
- 
+
+    function applyFilter() {
+      const cards = document.querySelectorAll('.notif-card');
+      let anyVisible = false;
+
+      cards.forEach(card => {
+        const matches = activeFilter === 'all' || card.dataset.type === activeFilter;
+        card.style.display = matches ? 'flex' : 'none';
+        if (matches) anyVisible = true;
+      });
+
+      // Date dividers only make sense if at least one card under them
+      // is visible — hide dividers whose whole group got filtered out
+      document.querySelectorAll('.date-divider').forEach(divider => {
+        let sibling = divider.nextElementSibling;
+        let groupHasVisible = false;
+        while (sibling && !sibling.classList.contains('date-divider')) {
+          if (sibling.classList.contains('notif-card') && sibling.style.display !== 'none') {
+            groupHasVisible = true;
+          }
+          sibling = sibling.nextElementSibling;
+        }
+        divider.style.display = groupHasVisible ? 'flex' : 'none';
+      });
+
+      document.getElementById('emptyState').style.display = anyVisible ? 'none' : 'flex';
+    }
+
+
     // -------------------------------------------------------
     // PLATFORM ASSISTANT
     // -------------------------------------------------------
@@ -358,6 +180,6 @@
       'How do I earn badges?':
         'Badges are earned by completing milestones — like sending 50 messages, connecting with students from 3 countries, or joining 5 groups. Check your Profile page to see your progress! 🏅'
     };
- 
+
 </script>
 {% endblock %}
