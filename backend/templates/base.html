@@ -82,7 +82,7 @@
 
       <a href="{% url 'engagement:notifications' %}" class="notif-icon" id="sidebarBell">
         <i class="ph-bold ph-bell"></i>
-        <span class="notif-badge" id="sidebarBadge">0</span>
+        <span class="notif-badge" id="sidebarBadge" style="display: {% if unread_notif_count > 0 %}flex{% else %}none{% endif %};">{{ unread_notif_count }}</span>
       </a>
 
     </div>
@@ -151,7 +151,7 @@
     <div class="mobile-logo">🌍 Global<span>.SC</span></div>
     <a href="{% url 'engagement:notifications' %}" class="mobile-bell">
       <i class="ph-bold ph-bell"></i>
-      <span class="notif-badge mobile-badge" id="mobileBadge">0</span>
+      <span class="notif-badge mobile-badge" id="mobileBadge" style="display: {% if unread_notif_count > 0 %}flex{% else %}none{% endif %};">{{ unread_notif_count }}</span>
     </a>
   </header>
 
@@ -216,26 +216,11 @@
 
     // -------------------------------------------------------
     // NOTIFICATION BADGE COUNT
-    // Still localStorage-based for now — wiring this to a real
-    // unread count needs a Django context processor (touches
-    // every page via settings.py, not just one view), which is
-    // a deliberate separate step, not done yet.
+    // No longer needed here — unread_notif_count is now a real
+    // value from engagement.context_processors, rendered
+    // server-side directly into the badge spans above. See
+    // engagement/context_processors.py.
     // -------------------------------------------------------
-    function updateNotifBadge() {
-      const count = parseInt(localStorage.getItem('unreadNotifs') || '3');
-      ['sidebarBadge', 'headerBadge', 'mobileBadge'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.textContent = count;
-        el.style.display = count > 0 ? 'flex' : 'none';
-      });
-    }
-
-    if (!localStorage.getItem('unreadNotifs')) {
-      localStorage.setItem('unreadNotifs', '3');
-    }
-
-    updateNotifBadge();
 
 
     // -------------------------------------------------------
