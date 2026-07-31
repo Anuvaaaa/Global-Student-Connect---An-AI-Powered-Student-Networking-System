@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title_suffix %} — Notifications{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/notifications.css' %}" />
+{% endblock %}
+
+{% block assistant_body %}
+<p class="assistant-intro">Hi! Ask me about your notifications 👋</p>
+      <div class="assistant-chips">
+        <button type="button" class="chip" onclick="askQuestion('What are notifications for?')">What are notifications for?</button>
+        <button type="button" class="chip" onclick="askQuestion('How do I start a chat?')">How do I start a chat?</button>
+        <button type="button" class="chip" onclick="askQuestion('How do I earn badges?')">How do I earn badges?</button>
+      </div>
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="notif-column">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Notifications</h1>
+          <p class="page-subtitle">Stay up to date with your matches, messages, and badges.</p>
+        </div>
+        <form method="post" action="{% url 'engagement:mark_all_read' %}">
+          {% csrf_token %}
+          <button type="submit" class="mark-all-btn">Mark all read</button>
+        </form>
+      </div>
+
+      <!-- Filter tabs — stays client-side JS, all notifications are
+           already rendered below with data-type attributes; no reason
+           to round-trip to the server just to filter what's already
+           on the page -->
+      <div class="filter-tabs">
+        <button type="button" class="filter-tab active" onclick="setFilter('all', this)">All</button>
+        <button type="button" class="filter-tab" onclick="setFilter('match', this)">Matches</button>
+        <button type="button" class="filter-tab" onclick="setFilter('message', this)">Messages</button>
+        <button type="button" class="filter-tab" onclick="setFilter('badge', this)">Badges</button>
+        <button type="button" class="filter-tab" onclick="setFilter('mission', this)">Missions</button>
+      </div>
+
+      <!-- Notification list — real data, grouped by real date -->
+      <div class="notif-list" id="notifList">
+        {% regroup notif_list by date_label as date_groups %}
+        {% for group in date_groups %}
+
+          <div class="date-divider">
+            <div class="divider-line"></div>
+            <span class="divider-label">{{ group.grouper }}</span>
+            <div class="divider-line"></div>
+          </div>
+
+          {% for item in group.list %}
+            {% with notif=item.notif %}
+              <!-- Hidden form for the card-body click (mark read, stay
+                   on page). Separate from the CTA link below it, so
+                   clicking the CTA doesn't also trigger this. -->
+              <form method="post" action="{% url 'engagement:mark_read' notif.id %}" id="markread-form-{{ notif.id }}" style="display:none;">
+                {% csrf_token %}
+              </form>
+
+              <div
+                class="notif-card {% if not notif.is_read %}unread{% endif %}"
+                data-type="{{ notif.type }}"
+                onclick="document.getElementById('markread-form-{{ notif.id }}').submit()"
+              >
+
+                <div class="notif-icon-wrap
+                  {% if notif.type == 'match' %}icon-match
+                  {% elif notif.type == 'group' %}icon-group
+                  {% elif notif.type == 'message' %}icon-message
+                  {% elif notif.type == 'badge' %}icon-badge
+                  {% elif notif.type == 'mission' %}icon-mission
+                  {% else %}icon-system{% endif %}">
+                  <i class="ph-bold
+                    {% if notif.type == 'match' %}ph-handshake
+                    {% elif notif.type == 'group' %}ph-users-three
+                    {% elif notif.type == 'message' %}ph-chat-circle
+                    {% elif notif.type == 'badge' %}ph-medal
+                    {% elif notif.type == 'mission' %}ph-flag
+                    {% else %}ph-megaphone{% endif %}"></i>
+                </div>
+
+                <div class="notif-body">
+                  <div class="notif-title">{{ notif.title }}</div>
+                  <div class="notif-desc">{{ notif.description }}</div>
+
+                  {% if notif.cta_href %}
+                    <a
+                      href="{% url 'engagement:open_notification' notif.id %}"
+                      class="notif-cta"
+                      onclick="event.stopPropagation()"
+                    >{{ notif.cta_label|default:"View" }}</a>
+                  {% endif %}
+                </div>
+
+                <div class="notif-right">
+                  <div class="notif-time">{{ notif.created_at|timesince }} ago</div>
+                  {% if not notif.is_read %}
+                    <div class="unread-dot"></div>
+                  {% endif %}
+                </div>
+
+              </div>
+            {% endwith %}
+          {% endfor %}
+
+        {% endfor %}
+      </div>
+
+      <!-- Empty state — shown by JS if the real list is genuinely empty -->
+      <div class="empty-state" id="emptyState" style="display: {% if not notif_list %}flex{% else %}none{% endif %};">
+        <div class="empty-icon">🔔</div>
+        <div class="empty-title">All caught up!</div>
+        <p class="empty-desc">No notifications here yet. Start connecting with students to see activity.</p>
+      </div>
+
+    </div>
+  </main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    // -------------------------------------------------------
+    // FILTER TABS — pure client-side show/hide, same as the
+    // prototype, just filtering real server-rendered cards
+    // instead of JS-built ones
+    // -------------------------------------------------------
+    let activeFilter = 'all';
+
+    function setFilter(type, btn) {
+      activeFilter = type;
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      applyFilter();
+    }
+
+    function applyFilter() {
+      const cards = document.querySelectorAll('.notif-card');
+      let anyVisible = false;
+
+      cards.forEach(card => {
+        const matches = activeFilter === 'all' || card.dataset.type === activeFilter;
+        card.style.display = matches ? 'flex' : 'none';
+        if (matches) anyVisible = true;
+      });
+
+      // Date dividers only make sense if at least one card under them
+      // is visible — hide dividers whose whole group got filtered out
+      document.querySelectorAll('.date-divider').forEach(divider => {
+        let sibling = divider.nextElementSibling;
+        let groupHasVisible = false;
+        while (sibling && !sibling.classList.contains('date-divider')) {
+          if (sibling.classList.contains('notif-card') && sibling.style.display !== 'none') {
+            groupHasVisible = true;
+          }
+          sibling = sibling.nextElementSibling;
+        }
+        divider.style.display = groupHasVisible ? 'flex' : 'none';
+      });
+
+      document.getElementById('emptyState').style.display = anyVisible ? 'none' : 'flex';
+    }
+
+
+    // -------------------------------------------------------
+    // PLATFORM ASSISTANT
+    // -------------------------------------------------------
+    const answers = {
+      'What are notifications for?':
+        'Notifications tell you when something happens — a new match, a message, a badge you earned, or a mission you completed. Think of them as your activity feed. 🔔',
+      'How do I start a chat?':
+        'Tap the "Start Chat" button on a New Match notification, or go to the Chats page where all your matched conversations live. 💬',
+      'How do I earn badges?':
+        'Badges are earned by completing milestones — like sending 50 messages, connecting with students from 3 countries, or joining 5 groups. Check your Profile page to see your progress! 🏅'
+    };
+
+</script>
+{% endblock %}
