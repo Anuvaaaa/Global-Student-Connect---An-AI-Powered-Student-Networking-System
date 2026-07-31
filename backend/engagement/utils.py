@@ -2,7 +2,8 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from .models import Badge, Mission, Notification, UserBadge, UserMissionProgress
+from .models import Badge, Mission, UserBadge, UserMissionProgress
+from .signals import badge_earned, mission_completed
 
 # Maps Badge.metric values to the matching UserEngagement field name.
 # 'matches' has no direct counter on UserEngagement — conversation_count
@@ -39,6 +40,15 @@ def check_and_award_badges(user):
       - matching: after MatchRequest accepted, after join_group_view
       - chat: after send_message_view
 
+    DESIGN PATTERN: Observer, via Django Signals. This function is the
+    Subject — it announces "a badge was earned" via badge_earned.send()
+    without knowing or caring what happens next. The actual Notification
+    creation lives in engagement/signals.py as a separate Observer
+    (@receiver function), fully decoupled from this function. Anyone
+    needing to react to a badge being earned later (an email alert, an
+    analytics log, etc.) just adds another receiver — this function
+    never changes.
+
     Returns the list of newly-earned Badge objects (empty list if none).
     """
     engagement = getattr(user, 'engagement', None)
@@ -59,14 +69,7 @@ def check_and_award_badges(user):
         current_value = getattr(engagement, field_name, 0)
         if current_value >= badge.threshold:
             UserBadge.objects.create(user=user, badge=badge)
-            Notification.objects.create(
-                user=user,
-                type='badge',
-                title='Badge unlocked 🏅',
-                description=f'You earned {badge.name} ({badge.get_tier_display()})!',
-                cta_label='View Badge',
-                cta_href='/profile/',
-            )
+            badge_earned.send(sender=Badge, user=user, badge=badge)
             newly_earned.append(badge)
 
     return newly_earned
@@ -175,9 +178,14 @@ def record_mission_progress(user, mission_key, amount=1):
         return progress_row  # already done for this period
 
     progress_row.progress = min(progress_row.progress + amount, mission.target)
+    just_completed = False
     if progress_row.progress >= mission.target:
         progress_row.completed_at = timezone.now()
+        just_completed = True
     progress_row.save()
+
+    if just_completed:
+        mission_completed.send(sender=Mission, user=user, mission=mission)
 
     return progress_row
 
