@@ -4,12 +4,10 @@ from django.urls import include, path
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    path('', include('accounts.urls')),
-    path('', include('engagement.urls')),
-    path('', include('social.urls')),      # placeholder — real one from Person B
-    path('', include('matching.urls')),    # placeholder — real one from Person C
-    path('', include('chat.urls')),        # placeholder — real one from Person C
+    path('', include('accounts.urls')),          # login (root), setup/, profile/
+    path('', include('engagement.urls')),         # notifications/
+    path('', include('social.urls')),              # home feed — ⚠️ see note below
 
-    # moderation has no page of its own (per the brief) — nothing to include yet
-    # path('', include('moderation.urls')),
+    path('connect/', include('matching.urls')),   # matching app — real
+    path('chat/', include('chat.urls')),           # chat app — real
 ]

@@ -28,6 +28,14 @@ class Post(models.Model):
 class Like(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    # Toggling used to hard-delete this row on unlike, which meant every
+    # re-like created a brand new row — get_or_create()'s `created` flag
+    # became True again each time, letting a user farm mission progress
+    # and notifications by spamming like/unlike on a single post. Keeping
+    # the row and flipping `active` instead means `created` is only ever
+    # True the very first time this user has EVER liked this post, so
+    # mission credit and notifications key off that safely.
+    active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
