@@ -51,8 +51,19 @@
           {% endif %}
         </div>
         <div class="moment-body">
-          <div class="moment-name">
-            {% if post.user_id == request.user.id %}You{% else %}{{ post.user.profile.display_name|default:post.user.username }}{% endif %}
+          <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+            <div class="moment-name">
+              {% if post.user_id == request.user.id %}You{% else %}{{ post.user.profile.display_name|default:post.user.username }}{% endif %}
+            </div>
+            {% if post.user_id == request.user.id %}
+            <form method="post" action="{% url 'social:delete_post' post.id %}" onsubmit="return confirm('Delete this post? This also removes its likes and comments.');" data-preserve-scroll>
+              {% csrf_token %}
+              <input type="hidden" name="next_page" value="{{ current_page }}">
+              <button type="submit" class="modal-close" style="font-size: 15px;" aria-label="Delete post">
+                <i class="ph-bold ph-trash"></i>
+              </button>
+            </form>
+            {% endif %}
           </div>
           <div class="moment-uni">
             {{ post.user.university.name|default:'' }}{% if post.user.university and post.user.profile.country %} · {% endif %}{{ post.user.profile.country|default:'' }}
@@ -62,8 +73,9 @@
 
           <!-- Like and comment action bar -->
           <div class="moment-actions">
-            <form method="post" action="{% url 'social:toggle_like' post.id %}" style="display: contents;">
+            <form method="post" action="{% url 'social:toggle_like' post.id %}" style="display: contents;" data-preserve-scroll>
               {% csrf_token %}
+              <input type="hidden" name="next_page" value="{{ current_page }}">
               <button type="submit" class="like-btn {% if post.id in liked_post_ids %}liked{% endif %}">
                 <i class="ph-bold ph-heart"></i>
                 <span class="like-count">{{ post.like_count }}</span>
@@ -75,8 +87,10 @@
             </button>
           </div>
 
-          <!-- Comments section — hidden by default, toggled by JS -->
-          <div class="comments-section" id="comments-{{ post.id }}">
+          <!-- Comments section — hidden by default, toggled by JS.
+               Auto-opened server-side if this is the post whose comment
+               was just added/deleted (see open_comments_post_id). -->
+          <div class="comments-section {% if open_comments_post_id == post.id %}open{% endif %}" id="comments-{{ post.id }}">
             {% for comment in post.visible_comments %}
             <div class="comment-item">
               <span class="comment-avatar">
@@ -89,8 +103,9 @@
                 <span class="comment-text">{{ comment.text }}</span>
               </div>
               {% if comment.user_id == request.user.id %}
-              <form method="post" action="{% url 'social:delete_comment' comment.id %}" onsubmit="return confirm('Delete this comment?');" style="margin-left: 4px;">
+              <form method="post" action="{% url 'social:delete_comment' comment.id %}" onsubmit="return confirm('Delete this comment?');" style="margin-left: 4px;" data-preserve-scroll>
                 {% csrf_token %}
+                <input type="hidden" name="next_page" value="{{ current_page }}">
                 <button type="submit" class="modal-close" style="font-size: 13px;" aria-label="Delete comment">
                   <i class="ph-bold ph-trash"></i>
                 </button>
@@ -100,8 +115,9 @@
             {% endfor %}
 
             <!-- Write a comment -->
-            <form method="post" action="{% url 'social:add_comment' post.id %}" class="comment-input-row">
+            <form method="post" action="{% url 'social:add_comment' post.id %}" class="comment-input-row" data-preserve-scroll>
               {% csrf_token %}
+              <input type="hidden" name="next_page" value="{{ current_page }}">
               <div class="comment-input-avatar">
                 <i class="ph-bold ph-user"></i>
               </div>
@@ -133,18 +149,22 @@
 
     <!-- ---------------------------------------------------------------
          PAGINATION — "Load more" replaces the prototype's one-day-
-         at-a-time JS reveal (per Person B's breakdown, Step 1.7)
+         at-a-time JS reveal (per Person B's breakdown, Step 1.7).
+         The #see-more anchor makes the browser jump back to roughly
+         this spot after the page reloads, instead of resetting to the
+         top — this is a plain link (full page reload), not JS, so it's
+         not a perfect scroll-position restore, just close enough.
     --------------------------------------------------------------- -->
-    {% if page_obj.has_next %}
-    <div class="caught-up">
-      <a href="?page={{ page_obj.next_page_number }}" class="see-more-btn" style="text-decoration: none; display: inline-block;">
+    {% if has_next %}
+    <div class="caught-up" id="see-more">
+      <a href="?page={{ next_page_number }}#see-more" class="see-more-btn" style="text-decoration: none; display: inline-block;">
         See older posts
       </a>
     </div>
     {% else %}
-    <div class="end-of-feed">
+    <div class="end-of-feed" id="see-more">
       <i class="ph-bold ph-calendar-blank"></i>
-      <p>You're all caught up!</p>
+      <p>You're all caught up! Moments older than 7 days aren't shown here.</p>
     </div>
     {% endif %}
 
@@ -172,6 +192,7 @@
 
     <form method="post" action="{% url 'social:create_post' %}">
       {% csrf_token %}
+      <input type="hidden" name="next_page" value="{{ current_page }}">
       <textarea
         name="text"
         class="moment-textarea"
@@ -193,6 +214,63 @@
 
 {% block extra_js %}
 <script>
+
+  // -------------------------------------------------------
+  // SCROLL POSITION PRESERVATION
+  // Like/comment/delete forms cause a full page reload (this is a
+  // plain Django app, not an SPA) — without this, the browser would
+  // reset to the top of the page every time, which feels like content
+  // is "jumping" or getting replaced. Instead: save the exact scroll
+  // position right before any tagged form submits, then restore that
+  // exact pixel position once the reloaded page finishes loading.
+  // -------------------------------------------------------
+  document.querySelectorAll('form[data-preserve-scroll]').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      sessionStorage.setItem('gsc_scrollY', window.scrollY);
+    });
+  });
+
+  window.addEventListener('DOMContentLoaded', function () {
+    const savedY = sessionStorage.getItem('gsc_scrollY');
+    if (savedY !== null) {
+      window.scrollTo(0, parseInt(savedY, 10));
+      sessionStorage.removeItem('gsc_scrollY');
+    }
+  });
+
+  // -------------------------------------------------------
+  // HIGHLIGHT LINKED POST
+  // Triggered when arriving via a notification's "View" link
+  // (cta_href points at #card-<id>). Never fires for this page's
+  // own like/comment/delete redirects — those never set a #card
+  // hash, they use the scroll-restore above instead.
+  //
+  // Checks document.readyState first rather than only listening for
+  // 'load' — this script sits near the bottom of the page, so if
+  // resources were already cached, 'load' can fire before this line
+  // even runs, meaning a listener registered here would silently
+  // never catch it.
+  // -------------------------------------------------------
+  function highlightLinkedPost() {
+    if (window.location.hash && window.location.hash.startsWith('#card-')) {
+      const target = document.querySelector(window.location.hash);
+      if (target) {
+        target.classList.add('highlight-flash');
+        setTimeout(() => target.classList.remove('highlight-flash'), 2500);
+      }
+    }
+  }
+
+  if (document.readyState === 'complete') {
+    highlightLinkedPost();
+  } else {
+    window.addEventListener('load', highlightLinkedPost);
+  }
+
+  // Also covers browser back/forward navigation restoring the page
+  // from cache (bfcache), where neither 'load' nor DOMContentLoaded
+  // fire again.
+  window.addEventListener('pageshow', highlightLinkedPost);
 
   // -------------------------------------------------------
   // COMMENT SECTION TOGGLE
