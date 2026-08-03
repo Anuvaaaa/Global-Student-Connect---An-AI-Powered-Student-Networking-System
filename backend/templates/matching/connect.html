@@ -5,6 +5,22 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/connect.css' %}" />
+<style>
+  /* Bounce/highlight animation for arriving via a "View request" notification.
+     Scoped here rather than in connect.css since it's a one-off transient
+     effect, not a base style for the button. */
+  @keyframes incomingHighlightBounce {
+    0%, 100% { transform: translateY(0); }
+    20%      { transform: translateY(-10px); }
+    40%      { transform: translateY(0); }
+    60%      { transform: translateY(-6px); }
+    80%      { transform: translateY(0); }
+  }
+  .incoming-highlight {
+    animation: incomingHighlightBounce 0.9s ease 3;
+    box-shadow: 0 0 0 6px rgba(61,47,217,0.18);
+  }
+</style>
 {% endblock %}
 
 {% block assistant_body %}
@@ -31,22 +47,31 @@
 
       <!-- -------------------------------------------------------------------
            STATS ROW
-           Hardcoded for prototype — animates on load
-           In real project values come from Django database
+           Real numbers, computed in connect_view from today's actual
+           Connection/MatchRequest/UserInterest data (see
+           _get_todays_stats() in matching/views.py). On a brand new
+           database with no activity yet, these show 0 / — rather than
+           faking a number, which is honest and also doubles as a signal
+           that the feature is wired up correctly once real matches start
+           happening.
       ------------------------------------------------------------------- -->
       <div class="stats-row">
         <div class="stat-card">
-          <div class="stat-number" id="stat-connected">0</div>
+          <div class="stat-number" id="stat-connected" data-target="{{ stat_connected_today|default:'0' }}">0</div>
           <div class="stat-label">students connected today</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-card">
-          <div class="stat-number" id="stat-time">0</div>
-          <div class="stat-label">average match time</div>
+          <div class="stat-number stat-text" id="stat-time">
+            {% if stat_avg_match_seconds %}{{ stat_avg_match_seconds }}s{% else %}—{% endif %}
+          </div>
+          <div class="stat-label">average match time today</div>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-card">
-          <div class="stat-number stat-text" id="stat-interest">—</div>
+          <div class="stat-number stat-text" id="stat-interest">
+            {% if stat_top_interest %}{{ stat_top_interest_emoji }} {{ stat_top_interest }}{% else %}—{% endif %}
+          </div>
           <div class="stat-label">top interest today</div>
         </div>
       </div>
@@ -157,7 +182,8 @@
 
 {% block modals %}
   <!-- =====================================================================
-       MATCHING ANIMATION OVERLAY
+       MATCHING ANIMATION OVERLAY (unchanged — this part is pure UI flavor,
+       it just narrates the request being sent while find_friend_view runs)
   ===================================================================== -->
   <div class="matching-overlay" id="matchingOverlay">
     <div class="matching-box">
@@ -178,8 +204,9 @@
 
   <!-- =====================================================================
        WAITING OVERLAY
-       Anonymous — no identity revealed yet
-       Mystery avatar with question mark
+       Real now: a MatchRequest exists with status='pending' and this
+       screen polls match_status_view every 2s until the recipient
+       actually acts on it.
   ===================================================================== -->
   <div class="result-overlay" id="waitingOverlay">
     <div class="result-card waiting-card">
@@ -189,7 +216,6 @@
         <div class="waiting-subtitle">Waiting for response...</div>
       </div>
 
-      <!-- Mystery avatar — identity hidden until acceptance -->
       <div class="mystery-avatar">
         <i class="ph-bold ph-user-circle"></i>
         <div class="mystery-question">?</div>
@@ -200,16 +226,17 @@
         Their identity will be revealed when they accept!
       </p>
 
-      <!-- Animated bouncing dots -->
       <div class="waiting-dots">
         <div class="dot"></div>
         <div class="dot"></div>
         <div class="dot"></div>
       </div>
 
-      <!-- Live waiting timer -->
       <div class="waiting-timer" id="waitingTimerDisplay">0s</div>
 
+      <button type="button" class="cancel-btn" id="dismissWaitingBtn" onclick="dismissWaiting()" style="background:#3d2fd9;color:white;margin-bottom:8px;">
+        Explore other features while waiting
+      </button>
       <button type="button" class="cancel-btn" id="cancelBtn" onclick="cancelRequest()">
         Cancel Request
       </button>
@@ -220,48 +247,27 @@
 
   <!-- =====================================================================
        REVEAL OVERLAY
-       Shown after acceptance — dramatic reveal animation
-       Identity shown for the first time here — element of surprise!
   ===================================================================== -->
   <div class="result-overlay" id="revealOverlay">
     <div class="result-card reveal-card">
 
-      <!-- Celebration header -->
       <div class="reveal-header">
         <div class="reveal-emoji">🎉</div>
         <div class="reveal-title">Someone accepted!</div>
         <div class="reveal-subtitle">Your match has been revealed</div>
       </div>
 
-      <!-- ---------------------------------------------------------------
-           REVEAL ANIMATION SECTION
-           Avatar and name animate in with dramatic effect
-           Classes added by JS to trigger CSS animations
-      --------------------------------------------------------------- -->
       <div class="reveal-identity" id="revealIdentity">
-
-        <!-- Flag/avatar — scales in with glow -->
         <div class="reveal-avatar-wrap">
-          <div class="reveal-avatar" id="revealAvatar">🎭</div>
-          <!-- Glow ring that pulses on reveal -->
+          <div class="reveal-avatar" id="revealAvatar"><i class="ph-bold ph-user-circle"></i></div>
           <div class="reveal-glow"></div>
         </div>
-
-        <!-- Name and uni fade up after avatar -->
         <div class="reveal-name-wrap">
           <div class="reveal-name" id="revealName">—</div>
           <div class="reveal-uni"  id="revealUni">—</div>
         </div>
-
       </div>
 
-      <!-- Shared interests -->
-      <div class="shared-interests">
-        <div class="shared-label">Shared interests</div>
-        <div class="shared-tags" id="sharedTags"></div>
-      </div>
-
-      <!-- Compatibility bar -->
       <div class="compatibility">
         <div class="compatibility-label">Compatibility Score</div>
         <div class="compatibility-bar">
@@ -270,11 +276,53 @@
         <div class="compatibility-percent" id="compatPercent">0%</div>
       </div>
 
-      <!-- Start chatting — URL includes user ID for converse.html to use -->
       <a href="#" class="start-chat-btn" id="startChatBtn">
         Start Chatting
         <i class="ph-bold ph-chat-circle"></i>
       </a>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================================
+       GROUP WAITING OVERLAY
+       Shown when this user is the only person in a not-yet-formed group.
+       Mirrors the 1:1 waiting overlay — polls group_status_view until a
+       second person joins.
+  ===================================================================== -->
+  <div class="result-overlay" id="groupWaitingOverlay">
+    <div class="result-card waiting-card">
+
+      <div class="waiting-header">
+        <div class="waiting-title">You're in the queue! 👥</div>
+        <div class="waiting-subtitle">Waiting for other students to join...</div>
+      </div>
+
+      <div class="mystery-avatar">
+        <i class="ph-bold ph-users-three"></i>
+        <div class="mystery-question">?</div>
+      </div>
+
+      <p class="waiting-note">
+        A group needs at least 2 people. You'll be grouped with the next
+        compatible student(s) who join — up to 4 total.
+      </p>
+
+      <div class="waiting-dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+
+      <div class="waiting-timer" id="groupWaitingTimerDisplay">0s</div>
+
+      <button type="button" class="cancel-btn" id="dismissGroupWaitingBtn" onclick="dismissGroupWaiting()" style="background:#f5a623;color:white;margin-bottom:8px;">
+        Explore other features while waiting
+      </button>
+      <button type="button" class="cancel-btn" id="cancelGroupWaitBtn" onclick="cancelGroupWait()">
+        Leave Queue
+      </button>
 
     </div>
   </div>
@@ -294,12 +342,6 @@
 
       <div class="group-members" id="groupMembers"></div>
 
-      <div class="shared-interests">
-        <div class="shared-label">Group interests</div>
-        <div class="shared-tags" id="groupSharedTags"></div>
-      </div>
-
-      <!-- Group chat URL also includes group ID -->
       <a href="#" class="start-chat-btn" id="startGroupChatBtn">
         Enter Group Chat
         <i class="ph-bold ph-chat-circle"></i>
@@ -318,7 +360,7 @@
       <div class="decline-emoji">😔</div>
       <div class="decline-title">No Match Found</div>
       <div class="decline-msg">
-        Couldn't find a friend at the moment.
+        That request wasn't accepted this time.
         Students may be busy or unavailable right now.
       </div>
       <div class="decline-note">
@@ -352,22 +394,20 @@
         Check back later for new matches!
       </div>
       <div class="decline-note">
-        In the full platform, new students join daily
-        so there's always someone new to meet.
+        As more students join, there'll always be someone new to meet.
       </div>
-      <a href="/connect/" class="try-again-btn" style="text-decoration:none; justify-content:center;">
+      <a href="{% url 'matching:connect' %}" class="try-again-btn" style="text-decoration:none; justify-content:center;">
         Back to Connect
       </a>
     </div>
   </div>
 
   <!-- =====================================================================
-     INCOMING MATCHES MODAL
-===================================================================== -->
+       INCOMING MATCHES MODAL — now backed by matching:incoming_requests
+  ===================================================================== -->
 <div class="result-overlay" id="incomingMatchesOverlay" onclick="closeIncomingMatches(event)">
   <div class="result-card incoming-card" id="incomingCard">
 
-    <!-- Header -->
     <div class="incoming-header">
       <div class="incoming-title">
         <i class="ph-bold ph-handshake"></i>
@@ -378,29 +418,21 @@
       </button>
     </div>
 
-    <!-- Counter pill -->
     <div class="incoming-counter">
-      <span id="incomingCardCount">2</span> request(s) waiting
+      <span id="incomingCardCount">0</span> request(s) waiting
     </div>
 
-    <!-- Request card body -->
     <div class="incoming-request-body" id="incomingRequestBody">
 
-      <!-- Avatar + name -->
       <div class="incoming-avatar-row">
-        <div class="incoming-avatar" id="incomingAvatar">🎭</div>
+        <div class="incoming-avatar" id="incomingAvatar"><i class="ph-bold ph-user-circle"></i></div>
         <div class="incoming-identity">
           <div class="incoming-name"    id="incomingName">—</div>
           <div class="incoming-meta"    id="incomingMeta">—</div>
         </div>
       </div>
 
-      <!-- Details grid -->
       <div class="incoming-details">
-        <div class="incoming-detail-row">
-          <i class="ph-bold ph-buildings"></i>
-          <span id="incomingUni">—</span>
-        </div>
         <div class="incoming-detail-row">
           <i class="ph-bold ph-globe"></i>
           <span id="incomingCountry">—</span>
@@ -409,13 +441,12 @@
           <i class="ph-bold ph-translate"></i>
           <span id="incomingLanguages">—</span>
         </div>
+        <div class="incoming-detail-row">
+          <i class="ph-bold ph-percent"></i>
+          <span id="incomingCompat">—</span>
+        </div>
       </div>
 
-      <!-- Interests -->
-      <div class="incoming-interests-label">Interests</div>
-      <div class="incoming-interests" id="incomingInterests"></div>
-
-      <!-- Buttons -->
       <div class="incoming-actions">
         <button type="button" class="incoming-decline-btn" onclick="handleIncomingDecline()">
           <i class="ph-bold ph-x-circle"></i>
@@ -429,7 +460,6 @@
 
     </div>
 
-    <!-- Empty state (shown when all requests handled) -->
     <div class="incoming-empty" id="incomingEmpty" style="display:none;">
       <div class="incoming-empty-icon">🎉</div>
       <div class="incoming-empty-text">All caught up!</div>
@@ -439,689 +469,594 @@
   </div>
 </div>
 
-  <!-- =====================================================================
-     INCOMING MATCHES BADGE
-===================================================================== -->
-<div class="incoming-matches-wrap">
+<div class="incoming-matches-wrap" id="incomingMatchesWrap" style="display: {% if incoming_count > 0 %}flex{% else %}none{% endif %};">
   <button type="button" class="incoming-matches-btn" id="incomingMatchesBtn" onclick="openIncomingMatches()" aria-label="Incoming match requests">
     <i class="ph-bold ph-handshake"></i>
   </button>
-  <span class="incoming-count" id="incomingCount">2</span>
+  <span class="incoming-count" id="incomingCount">{{ incoming_count }}</span>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 
-    // -------------------------------------------------------
-// INCOMING MATCHES
-// Fake queue of people who "sent you" a match request
-// -------------------------------------------------------
-const incomingRequests = [
-  {
-    id: 'in_priya_002',
-    name: 'Priya Sharma',
-    flag: '🇮🇳',
-    uni: 'IIT Delhi',
-    country: 'India',
-    languages: 'Hindi, English',
-    interests: ['Reading', 'Photography', 'Music']
-  },
-  {
-    id: 'kr_jiyeon_010',
-    name: 'Jiyeon Park',
-    flag: '🇰🇷',
-    uni: 'Seoul National University',
-    country: 'South Korea',
-    languages: 'Korean, English',
-    interests: ['Music', 'Art & Design', 'Gaming']
+  // ---------------------------------------------------------------
+  // CSRF helper — Django needs this header on every POST fetch()
+  // ---------------------------------------------------------------
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
   }
-];
+  const CSRF_TOKEN = getCookie('csrftoken');
 
-let incomingQueue = [...incomingRequests];
-let currentIncoming = null;
+  function apiPost(url) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN },
+    }).then(r => r.json());
+  }
 
-function updateIncomingBadge() {
-  const btn   = document.getElementById('incomingMatchesBtn');
-  const count = document.getElementById('incomingCount');
-  if (!btn || !count) return;
-  count.textContent    = incomingQueue.length;
-  btn.style.display    = incomingQueue.length > 0 ? 'flex' : 'none';
-}
+  function apiGet(url) {
+    return fetch(url).then(r => r.json());
+  }
 
-function openIncomingMatches() {
-  if (incomingQueue.length === 0) return;
-  currentIncoming = incomingQueue[0];
-  renderIncomingCard();
-  document.getElementById('incomingMatchesOverlay').style.display = 'flex';
-}
+  // -----------------------------------------------------------
+  // INCOMING MATCHES
+  // -----------------------------------------------------------
+  let incomingQueue   = [];
+  let currentIncoming = null;
 
-function closeIncomingMatches(e) {
-  // Close only if clicking the backdrop, not the card itself
-  if (e && e.target !== document.getElementById('incomingMatchesOverlay')) return;
-  document.getElementById('incomingMatchesOverlay').style.display = 'none';
-}
-
-function renderIncomingCard() {
-  const r = currentIncoming;
-  document.getElementById('incomingAvatar').textContent    = r.flag;
-  document.getElementById('incomingName').textContent      = r.name;
-  document.getElementById('incomingMeta').textContent      = r.uni + ' · ' + r.country;
-  document.getElementById('incomingUni').textContent       = r.uni;
-  document.getElementById('incomingCountry').textContent   = r.country;
-  document.getElementById('incomingLanguages').textContent = r.languages;
-  document.getElementById('incomingCardCount').textContent = incomingQueue.length;
-
-  // Build interest tags
-  const container = document.getElementById('incomingInterests');
-  container.innerHTML = '';
-  r.interests.forEach(interest => {
-    const tag = document.createElement('span');
-    tag.className   = 'shared-tag';
-    tag.textContent = interest;
-    container.appendChild(tag);
-  });
-
-  document.getElementById('incomingRequestBody').style.display = 'block';
-  document.getElementById('incomingEmpty').style.display       = 'none';
-}
-
-function handleIncomingAccept() {
-  const r = currentIncoming;
-
-  // Save to chat inbox in localStorage (chat.html reads this)
-  const chats = JSON.parse(localStorage.getItem('chatInbox') || '[]');
-  if (!chats.find(c => c.id === r.id)) {
-    chats.unshift({
-      id:       r.id,
-      name:     r.name,
-      flag:     r.flag,
-      uni:      r.uni,
-      country:  r.country,
-      lastMsg:  'You are now connected! Say hello 👋',
-      time:     'Just now',
-      unread:   1
+  function refreshIncomingBadge() {
+    apiGet("{% url 'matching:incoming_requests' %}").then(data => {
+      incomingQueue = data.requests;
+      const wrap  = document.getElementById('incomingMatchesWrap');
+      const count = document.getElementById('incomingCount');
+      count.textContent = incomingQueue.length;
+      // Hide the button AND its count bubble together — hiding only the
+      // button used to leave the count circle floating on its own.
+      wrap.style.display = incomingQueue.length > 0 ? 'flex' : 'none';
     });
-    localStorage.setItem('chatInbox', JSON.stringify(chats));
   }
 
-
-  // Save to friendMatches so they don't appear again in Find a Friend
-const fm = JSON.parse(localStorage.getItem('friendMatches') || '[]');
-if (!fm.includes(r.id)) { fm.push(r.id); localStorage.setItem('friendMatches', JSON.stringify(fm)); }
-
-// Remove from queue
-incomingQueue.shift();
-updateIncomingBadge();
-
-  // Navigate to chat
-  window.location.href = '/converse/?' +
-    'user='    + encodeURIComponent(r.id) +
-    '&name='   + encodeURIComponent(r.name) +
-    '&flag='   + encodeURIComponent(r.flag) +
-    '&uni='    + encodeURIComponent(r.uni) +
-    '&country='+ encodeURIComponent(r.country);
-}
-
-function handleIncomingDecline() {
-  // Remove current from queue
-  incomingQueue.shift();
-  updateIncomingBadge();
-
-  if (incomingQueue.length > 0) {
-    // Show next request
+  function openIncomingMatches() {
+    if (incomingQueue.length === 0) return;
     currentIncoming = incomingQueue[0];
     renderIncomingCard();
-  } else {
-    // Show empty state
-    document.getElementById('incomingRequestBody').style.display = 'none';
-    document.getElementById('incomingEmpty').style.display       = 'block';
+    document.getElementById('incomingMatchesOverlay').style.display = 'flex';
   }
-}
 
-// Init badge on page load
-updateIncomingBadge();
+  function closeIncomingMatches(e) {
+    if (e && e.target !== document.getElementById('incomingMatchesOverlay')) return;
+    document.getElementById('incomingMatchesOverlay').style.display = 'none';
+  }
 
+  function renderIncomingCard() {
+    const r = currentIncoming;
+    document.getElementById('incomingName').textContent      = r.name;
+    document.getElementById('incomingMeta').textContent      = r.country || '—';
+    document.getElementById('incomingCountry').textContent   = r.country || '—';
+    document.getElementById('incomingLanguages').textContent = r.languages || '—';
+    document.getElementById('incomingCompat').textContent    = (r.compatibility_score || 0) + '% compatible';
+    document.getElementById('incomingCardCount').textContent = incomingQueue.length;
 
-    // -------------------------------------------------------
-    // STATS COUNTER ANIMATION
-    // -------------------------------------------------------
-    function animateCount(elementId, target, duration) {
-      const el   = document.getElementById(elementId);
-      const step = target / (duration / 16);
-      let current = 0;
-      const timer = setInterval(() => {
-        current += step;
-        if (current >= target) { current = target; clearInterval(timer); }
-        el.textContent = Math.floor(current).toLocaleString();
-      }, 16);
-    }
+    document.getElementById('incomingRequestBody').style.display = 'block';
+    document.getElementById('incomingEmpty').style.display       = 'none';
+  }
 
-    window.addEventListener('load', () => {
-      animateCount('stat-connected', 2400, 1500);
-      setTimeout(() => { document.getElementById('stat-time').textContent = '8s'; }, 800);
-      setTimeout(() => { document.getElementById('stat-interest').textContent = 'Music 🎵'; }, 1000);
+  function handleIncomingAccept() {
+    const r = currentIncoming;
+    apiPost(`/connect/request/${r.request_id}/accept/`).then(data => {
+      if (!data.ok) return;
+      window.location.href = "{% url 'chat:inbox' %}";
     });
-
-
-    // -------------------------------------------------------
-    // FAKE MATCH DATA
-    // Gender field for same-gender matching (silent in UI)
-    // In real project Django filters by gender in the DB query
-    // -------------------------------------------------------
-    const fakeMatches = [
-      { id: 'jp_yuki_001',    name: 'Yuki Tanaka',    uni: 'Tokyo University',   country: 'Japan',     flag: '🇯🇵', gender: 'Female', interests: ['Music', 'Coding', 'Gaming'] },
-      { id: 'in_priya_002',   name: 'Priya Sharma',   uni: 'IIT Delhi',          country: 'India',     flag: '🇮🇳', gender: 'Female', interests: ['Reading', 'Photography', 'Music'] },
-      { id: 'br_lucas_003',   name: 'Lucas Mendes',   uni: 'USP',                country: 'Brazil',    flag: '🇧🇷', gender: 'Male',   interests: ['Football', 'Coding', 'Travel'] },
-      { id: 'fr_camille_004', name: 'Camille Dubois', uni: 'Sorbonne',           country: 'France',    flag: '🇫🇷', gender: 'Female', interests: ['Art & Design', 'Travel', 'Photography'] },
-      { id: 'de_lukas_005',   name: 'Lukas Bauer',    uni: 'TU Munich',          country: 'Germany',   flag: '🇩🇪', gender: 'Male',   interests: ['Coding', 'Gaming', 'Reading'] },
-      { id: 'pk_hassan_006',  name: 'Hassan Ali',     uni: 'LUMS',               country: 'Pakistan',  flag: '🇵🇰', gender: 'Male',   interests: ['Cricket', 'Coding', 'Travel'] },
-      { id: 'mx_sofia_007',   name: 'Sofia Reyes',    uni: 'UNAM',               country: 'Mexico',    flag: '🇲🇽', gender: 'Female', interests: ['Art & Design', 'Music', 'Travel'] },
-      { id: 'ca_aiden_008',   name: 'Aiden Park',     uni: 'UBC',                country: 'Canada',    flag: '🇨🇦', gender: 'Male',   interests: ['Gaming', 'Cooking', 'Music'] },
-      { id: 'ng_chidi_009',   name: 'Chidi Okafor',   uni: 'University of Lagos',country: 'Nigeria',   flag: '🇳🇬', gender: 'Male',   interests: ['Football', 'Music', 'Photography'] },
-      { id: 'kr_jiyeon_010',  name: 'Jiyeon Park',    uni: 'Seoul National',     country: 'South Korea',flag: '🇰🇷', gender: 'Female', interests: ['Music', 'Art & Design', 'Gaming'] }
-    ];
-
-   const fakeGroups = [
-  {
-    id: 'group_tech_001',
-    name: 'Global Tech Enthusiasts',
-    gender: 'Male',
-    members: [
-      { name: 'Rafi Khan', uni: 'BUET', country: 'Bangladesh', flag: '🇧🇩' },
-      { name: 'Lukas Bauer', uni: 'TU Munich', country: 'Germany', flag: '🇩🇪' },
-      { name: 'Hassan Ali', uni: 'LUMS', country: 'Pakistan', flag: '🇵🇰' }
-    ],
-    sharedInterests: ['Coding', 'Gaming']
-  },
-  {
-    id: 'group_creative_002',
-    name: 'Creative Minds',
-    gender: 'Female',
-    members: [
-      { name: 'Sofia Reyes', uni: 'UNAM', country: 'Mexico', flag: '🇲🇽' },
-      { name: 'Aiden Park', uni: 'UBC', country: 'Canada', flag: '🇨🇦' },
-      { name: 'Camille Dubois', uni: 'Sorbonne', country: 'France', flag: '🇫🇷' }
-    ],
-    sharedInterests: ['Art & Design', 'Music']
   }
-];
 
-
-    // -------------------------------------------------------
-    // ALREADY MATCHED TRACKING
-    // FIX: separate arrays for friends and groups
-    // Prevents group joins from triggering First Friend badge
-    // -------------------------------------------------------
-    function getFriendMatchedList() {
-      return JSON.parse(localStorage.getItem('friendMatches') || '[]');
-    }
-
-    function getGroupMatchedList() {
-      return JSON.parse(localStorage.getItem('groupMatches') || '[]');
-    }
-
-    function saveToFriendList(id) {
-      const list = getFriendMatchedList();
-      if (!list.includes(id)) {
-        list.push(id);
-        localStorage.setItem('friendMatches', JSON.stringify(list));
+  function handleIncomingDecline() {
+    const r = currentIncoming;
+    apiPost(`/connect/request/${r.request_id}/decline/`).then(() => {
+      incomingQueue.shift();
+      if (incomingQueue.length > 0) {
+        currentIncoming = incomingQueue[0];
+        renderIncomingCard();
+      } else {
+        document.getElementById('incomingRequestBody').style.display = 'none';
+        document.getElementById('incomingEmpty').style.display       = 'block';
       }
-    }
+      refreshIncomingBadge();
+    });
+  }
 
-    function saveToGroupList(id) {
-      const list = getGroupMatchedList();
-      if (!list.includes(id)) {
-        list.push(id);
-        localStorage.setItem('groupMatches', JSON.stringify(list));
+  refreshIncomingBadge();
+  setInterval(refreshIncomingBadge, 5000); // catch new incoming requests without a reload
+
+  // -----------------------------------------------------------
+  // COUNT-UP ANIMATION for "students connected today"
+  // The prototype animated its (fake) stats on load — this brings that
+  // back for the real number, counting up from 0 to the actual server-
+  // rendered value. Skipped entirely when the target is 0, since
+  // animating up to zero looks like nothing happened.
+  // -----------------------------------------------------------
+  (function animateConnectedStat() {
+    const el = document.getElementById('stat-connected');
+    const target = parseInt(el.dataset.target, 10) || 0;
+    if (target <= 0) { el.textContent = '0'; return; }
+
+    const durationMs = 350;
+    const startTime = performance.now();
+
+    function tick(now) {
+      const progress = Math.min((now - startTime) / durationMs, 1);
+      el.textContent = Math.round(progress * target);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  })();
+
+  // ARRIVING FROM A "View request" NOTIFICATION
+  // The notification links to /connect/?highlight=incoming — bounce
+  // the badge for a few seconds so it's obvious where to look, then
+  // strip the query param so a refresh doesn't replay the animation.
+  // -----------------------------------------------------------
+  (function handleHighlightParam() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('highlight') !== 'incoming') return;
+
+    // Badge data might not have loaded yet from refreshIncomingBadge()
+    // above (it's an async fetch) — wait briefly for it, then animate.
+    setTimeout(() => {
+      const wrap = document.getElementById('incomingMatchesWrap');
+      if (wrap.style.display === 'none') return; // request may have been withdrawn/expired
+      wrap.classList.add('incoming-highlight');
+      setTimeout(() => wrap.classList.remove('incoming-highlight'), 3000);
+    }, 400);
+
+    // Clean the URL so reloading this page doesn't re-trigger the bounce
+    const url = new URL(window.location);
+    url.searchParams.delete('highlight');
+    window.history.replaceState({}, '', url);
+  })();
+
+
+  // -----------------------------------------------------------
+  // STATE
+  // Friend-matching and group-joining are now fully independent —
+  // dismissing the friend-waiting screen no longer blocks Join a Group,
+  // and vice versa. Each button has its own busy flag that's only true
+  // during its own brief animation, not for the whole outstanding
+  // request lifetime.
+  // -----------------------------------------------------------
+  let isFriendBusy       = false;  // true only during the ~4s scripted animation
+  let isGroupBusy        = false;  // true only during the group animation + real join call
+  let waitingDismissed   = false;
+  let waitingCounter     = null;
+  let statusPollInterval = null;
+  let activeRequestId    = null;   // the ONE outstanding pending friend request, if any
+  let pendingRevealData  = null;   // set once that request resolves, until shown
+
+  let groupWaitDismissed    = false;
+  let groupWaitingCounter   = null;
+  let groupStatusPollInterval = null;
+  let activeGroupWaitId     = null;  // set while waiting alone in a not-yet-formed group
+  let pendingGroupRevealData = null; // set once the group forms, until shown
+
+  const friendMessages = [
+    'Scanning your profile...',
+    'Analyzing your interests...',
+    'Checking compatibility...',
+    'Match found! Sending request...',
+    'Request sent! ✅'
+  ];
+
+  const groupMessages = [
+    'Scanning your profile...',
+    'Searching for compatible students...',
+    'Forming group by shared interests...',
+    'Group found! ✅'
+  ];
+
+  function startMatching(type) {
+    if (type === 'friend') {
+      if (isFriendBusy) return;
+
+      // Already have a live request from earlier — don't fire a second
+      // one. Just bring back the right screen for its current state.
+      if (activeRequestId && !pendingRevealData) {
+        reopenWaitingScreen();
+        return;
       }
-    }
-
-    // Filter by same gender AND not already friend-matched
-    // Gender matching is invisible in UI — handled silently here
-    function getAvailableMatches() {
-      const matched    = getFriendMatchedList();
-      const userGender = localStorage.getItem('userGender') || 'Male';
-      return fakeMatches.filter(m =>
-        m.gender === userGender &&
-        !matched.includes(m.id)
-      );
-    }
-
-    function getAvailableGroups() {
-  const matched = getGroupMatchedList();
-  const userGender = localStorage.getItem('userGender') || 'Male';
-
-  return fakeGroups.filter(g =>
-    g.gender === userGender &&
-    !matched.includes(g.id)
-  );
-}
-
-
-    // -------------------------------------------------------
-    // STATE VARIABLES
-    // -------------------------------------------------------
-    let isMatching     = false;
-    let matchingType   = 'friend';
-    let currentMatch   = null;
-    let waitingActive  = false;
-    let waitingCounter = null; // Interval for the timer display
-
-
-    // -------------------------------------------------------
-    // MATCHING ANIMATION MESSAGES
-    // -------------------------------------------------------
-    const friendMessages = [
-      'Scanning your profile...',
-      'Analyzing your interests...',
-      'Checking compatibility...',
-      'Match found! Sending request...',
-      'Request sent! ✅'
-    ];
-
-    const groupMessages = [
-      'Scanning your profile...',
-      'Searching for compatible students...',
-      'Forming group by shared interests...',
-      'Group found! ✅'
-    ];
-
-
-    // -------------------------------------------------------
-    // START MATCHING
-    // -------------------------------------------------------
-    function startMatching(type) {
-      if (isMatching) return;
-      isMatching   = true;
-      matchingType = type;
-
-      document.getElementById('findFriendBtn').setAttribute('aria-busy', 'true');
-      document.getElementById('joinGroupBtn').setAttribute('aria-busy',  'true');
-
-      hideAllOverlays();
-      document.getElementById('matchingLog').innerHTML      = '';
-      document.getElementById('matchingStatus').textContent = 'Initializing...';
-      document.getElementById('matchingOverlay').style.display = 'flex';
-
-      const messages = type === 'friend' ? friendMessages : groupMessages;
-
-      let delay = 0;
-      messages.forEach((msg, index) => {
-        setTimeout(() => {
-          document.getElementById('matchingStatus').textContent = msg;
-          addLogMessage(msg);
-
-          if (index === messages.length - 1) {
-            setTimeout(() => {
-              document.getElementById('matchingOverlay').style.display = 'none';
-              if (type === 'group') {
-                showGroupResult();
-              } else {
-                showWaitingScreen();
-              }
-            }, 800);
-          }
-        }, delay);
-        delay += 900;
-      });
-    }
-
-    function addLogMessage(text) {
-      const log = document.getElementById('matchingLog');
-      const msg = document.createElement('div');
-      msg.className   = 'log-message';
-      msg.textContent = text;
-      log.appendChild(msg);
-      log.scrollTop = log.scrollHeight;
-    }
-
-
-    // -------------------------------------------------------
-    // WAITING SCREEN
-    // Anonymous — identity hidden until accepted
-    // -------------------------------------------------------
-    function showWaitingScreen() {
-      const available = getAvailableMatches();
-
-      if (available.length === 0) {
-        document.getElementById('noMatchOverlay').style.display = 'flex';
-        resetMatchingLock();
+      if (pendingRevealData) {
+        revealPendingFriendResult();
         return;
       }
 
-      // Pick match silently — user doesn't see who yet
-      currentMatch  = available[Math.floor(Math.random() * available.length)];
-      waitingActive = true;
+      isFriendBusy = true;
+      document.getElementById('findFriendBtn').setAttribute('aria-busy', 'true');
+    } else {
+      if (isGroupBusy) return;
 
-      // Start live timer display
-      let seconds = 0;
-      document.getElementById('waitingTimerDisplay').textContent = '0s';
-      waitingCounter = setInterval(() => {
-        seconds++;
-        document.getElementById('waitingTimerDisplay').textContent = seconds + 's';
-      }, 1000);
+      // Already waiting alone in a not-yet-formed group — don't create
+      // ANOTHER group, just bring back the waiting screen for it.
+      if (activeGroupWaitId && !pendingGroupRevealData) {
+        reopenGroupWaitingScreen();
+        return;
+      }
+      if (pendingGroupRevealData) {
+        revealPendingGroupResult();
+        return;
+      }
 
-      // Show waiting overlay and focus cancel button for accessibility
-      document.getElementById('waitingOverlay').style.display = 'flex';
+      isGroupBusy = true;
+      document.getElementById('joinGroupBtn').setAttribute('aria-busy', 'true');
+    }
+
+    hideAllOverlays();
+    document.getElementById('matchingLog').innerHTML      = '';
+    document.getElementById('matchingStatus').textContent = 'Initializing...';
+    document.getElementById('matchingOverlay').style.display = 'flex';
+
+    const messages = type === 'friend' ? friendMessages : groupMessages;
+
+    let delay = 0;
+    messages.forEach((msg, index) => {
       setTimeout(() => {
-        document.getElementById('cancelBtn').focus();
-      }, 100);
+        document.getElementById('matchingStatus').textContent = msg;
+        addLogMessage(msg);
 
-      // FIX: Save timer ID to window so keyboard shortcuts can cancel it
-      // 80% accept, 20% decline — realistic for demo
-      // Can be overridden by pressing A (accept) or D (decline)
-      const delay    = 4000 + Math.random() * 3000;
-      const accepted = Math.random() < 0.8;
-
-      window._autoResolveTimer = setTimeout(() => {
-        if (!waitingActive) return;
-        if (accepted) {
-          acceptMatch();
-        } else {
-          declineMatch();
+        if (index === messages.length - 1) {
+          setTimeout(() => {
+            document.getElementById('matchingOverlay').style.display = 'none';
+            if (type === 'group') {
+              doJoinGroup();
+            } else {
+              doFindFriend();
+            }
+          }, 800);
         }
       }, delay);
+      delay += 900;
+    });
+  }
+
+  function addLogMessage(text) {
+    const log = document.getElementById('matchingLog');
+    const msg = document.createElement('div');
+    msg.className   = 'log-message';
+    msg.textContent = text;
+    log.appendChild(msg);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // -----------------------------------------------------------
+  // FIND A FRIEND — real request, real waiting
+  // -----------------------------------------------------------
+  // -----------------------------------------------------------
+  // ELAPSED-TIME TIMER HELPER
+  // Bug this fixes: the old version counted seconds with a local JS
+  // variable that started over at 0 every time the waiting screen was
+  // reopened after being dismissed. Now every "waiting started" event
+  // is anchored to a real server timestamp (created_at / joined_at), and
+  // the displayed time is always (now - that timestamp) — so dismissing
+  // and reopening never resets it, it just keeps ticking from the truth.
+  // -----------------------------------------------------------
+  function startElapsedTimer(displayElementId, startTimeMs) {
+    function update() {
+      const secs = Math.max(0, Math.floor((Date.now() - startTimeMs) / 1000));
+      document.getElementById(displayElementId).textContent = secs + 's';
     }
+    update();
+    return setInterval(update, 1000);
+  }
 
+  let friendWaitStartMs = null;  // real timestamp the outstanding request began
+  let groupWaitStartMs  = null;  // real timestamp this group-wait began
 
-    // -------------------------------------------------------
-    // ACCEPT MATCH
-    // Triggered automatically or by pressing A during demo
-    // This is the big reveal moment!
-    // -------------------------------------------------------
-    function acceptMatch() {
-      if (!waitingActive) return;
-      waitingActive = false;
+  function doFindFriend() {
+    apiPost("{% url 'matching:find_friend' %}").then(data => {
+      isFriendBusy = false;
+      document.getElementById('findFriendBtn').setAttribute('aria-busy', 'false');
 
-      // Stop the waiting timer and auto-resolve timer
-      clearInterval(waitingCounter);
-      clearTimeout(window._autoResolveTimer); // FIX: now actually works
-
-      document.getElementById('waitingOverlay').style.display = 'none';
-
-      // Show reveal card with animation
-      showRevealCard(currentMatch);
-
-      // Save to FRIEND list only — not shared with groups
-      saveToFriendList(currentMatch.id);
-
-      // Check if this is the first ever friend match
-      // Uses friendMatches separately — groups don't trigger this
-      const friendList = getFriendMatchedList();
-      if (friendList.length === 1) {
-        localStorage.setItem('firstFriendEarned', 'true');
-      }
-
-      // Update matched countries for Global Explorer badge
-      const countries = JSON.parse(localStorage.getItem('matchedCountries') || '[]');
-      if (!countries.includes(currentMatch.country)) {
-        countries.push(currentMatch.country);
-        localStorage.setItem('matchedCountries', JSON.stringify(countries));
-        localStorage.setItem('countriesConnected', countries.length.toString());
-      }
-
-      resetMatchingLock();
-    }
-
-
-    // -------------------------------------------------------
-    // DECLINE MATCH
-    // Triggered automatically or by pressing D during demo
-    // -------------------------------------------------------
-    function declineMatch() {
-      if (!waitingActive) return;
-      waitingActive = false;
-
-      clearInterval(waitingCounter);
-      clearTimeout(window._autoResolveTimer); // FIX: now actually works
-
-      document.getElementById('waitingOverlay').style.display = 'none';
-      document.getElementById('declineOverlay').style.display = 'flex';
-
-      resetMatchingLock();
-    }
-
-
-    // -------------------------------------------------------
-    // SHOW REVEAL CARD
-    // Dramatic reveal animation — name and avatar appear with effects
-    // Identity shown for the FIRST TIME here
-    // -------------------------------------------------------
-    function showRevealCard(match) {
-
-      // Set avatar and name content
-      document.getElementById('revealAvatar').textContent = match.flag;
-      document.getElementById('revealName').textContent   = match.name;
-      document.getElementById('revealUni').textContent    = match.uni + ' · ' + match.country;
-
-      // Get user interests for shared calculation
-      const userInterests = (localStorage.getItem('userInterests') || 'Music,Coding')
-        .split(',')
-        .map(i => i.trim());
-
-      const shared        = match.interests.filter(i => userInterests.includes(i));
-      const displayShared = shared.length > 0 ? shared : [match.interests[0]];
-
-      // Build shared tags safely
-      const tagsContainer = document.getElementById('sharedTags');
-      tagsContainer.innerHTML = '';
-      displayShared.forEach(interest => {
-        const tag = document.createElement('span');
-        tag.className   = 'shared-tag';
-        tag.textContent = interest;
-        tagsContainer.appendChild(tag);
-      });
-
-      // FIX: Better compatibility formula with slight randomness
-      // Feels more realistic than always hitting same score
-      const baseScore = displayShared.length * 10 + 60;
-      const random    = Math.floor(Math.random() * 11); // 0-10 random bonus
-      const score     = Math.min(baseScore + random, 98);
-
-      document.getElementById('compatPercent').textContent = score + '%';
-      document.getElementById('compatFill').style.width    = '0%';
-
-      // Chat URL includes user ID — converse.html reads this to know who the chat is with
-      // In real project this maps to a real chat room in the database
-      document.getElementById('startChatBtn').href =
-  '/converse/?' +
-  'user=' + encodeURIComponent(match.id) +
-  '&name=' + encodeURIComponent(match.name) +
-  '&flag=' + encodeURIComponent(match.flag) +
-  '&uni=' + encodeURIComponent(match.uni) +
-  '&country=' + encodeURIComponent(match.country);
-      // Show reveal overlay first
-      document.getElementById('revealOverlay').style.display = 'flex';
-
-      // Trigger reveal animation after short delay
-      // Small delay so overlay is fully visible before animation starts
-      setTimeout(() => {
-        const identity = document.getElementById('revealIdentity');
-        identity.classList.add('revealed');
-
-        // Animate compatibility bar after identity reveals
-        setTimeout(() => {
-          document.getElementById('compatFill').style.width = score + '%';
-        }, 600);
-
-      }, 200);
-    }
-
-
-    // -------------------------------------------------------
-    // SHOW GROUP RESULT
-    // Groups show result directly — no anonymous waiting
-    // -------------------------------------------------------
-    function showGroupResult() {
-      const available = getAvailableGroups();
-
-      if (available.length === 0) {
+      if (!data.found) {
         document.getElementById('noMatchOverlay').style.display = 'flex';
-        resetMatchingLock();
+        return;
+      }
+      activeRequestId  = data.request_id;
+      friendWaitStartMs = new Date(data.created_at).getTime();
+      showWaitingScreen();
+    });
+  }
+
+  function showWaitingScreen() {
+    waitingDismissed = false;
+
+    clearInterval(waitingCounter);
+    waitingCounter = startElapsedTimer('waitingTimerDisplay', friendWaitStartMs);
+
+    document.getElementById('waitingOverlay').style.display = 'flex';
+    setTimeout(() => document.getElementById('cancelBtn').focus(), 100);
+
+    clearInterval(statusPollInterval);
+    // Poll the real status every 2s — no more fake Math.random() timers.
+    // This keeps running even if the overlay gets dismissed below, since
+    // the request is a real DB row that resolves independently of the UI.
+    statusPollInterval = setInterval(() => {
+      apiGet(`/connect/request/${activeRequestId}/status/`).then(data => {
+        if (data.status === 'accepted' || data.status === 'declined') {
+          clearInterval(waitingCounter);
+          clearInterval(statusPollInterval);
+          pendingRevealData = data.status === 'accepted' ? data : { declined: true };
+
+          if (!waitingDismissed) {
+            document.getElementById('waitingOverlay').style.display = 'none';
+            revealPendingFriendResult();
+          }
+          // If dismissed, just leave pendingRevealData set — the next
+          // time they click "Find a Friend" (now unlocked) it'll show
+          // the right screen instantly, via the branch in startMatching().
+        }
+        // status === 'pending' -> keep waiting, keep polling
+      });
+    }, 2000);
+  }
+
+  // Reopen the waiting screen for an existing pending request (used when
+  // re-clicking "Find a Friend" instead of starting a whole new search).
+  // Timer resumes from the REAL elapsed time, not from 0.
+  function reopenWaitingScreen() {
+    hideAllOverlays();
+    waitingDismissed = false;
+    document.getElementById('waitingOverlay').style.display = 'flex';
+    clearInterval(waitingCounter);
+    waitingCounter = startElapsedTimer('waitingTimerDisplay', friendWaitStartMs);
+    // statusPollInterval is already running in the background — no need
+    // to start a second one.
+  }
+
+  function revealPendingFriendResult() {
+    if (pendingRevealData.declined) {
+      document.getElementById('declineOverlay').style.display = 'flex';
+    } else {
+      showRevealCard(pendingRevealData);
+    }
+    activeRequestId   = null;
+    pendingRevealData = null;
+    friendWaitStartMs = null;
+  }
+
+  // Hide the waiting overlay and immediately free up both buttons — the
+  // background poll keeps running regardless, since the request is a
+  // real DB row. No more "pending pill" nagging about it; the next time
+  // they click "Find a Friend" it'll just pick up wherever things stand.
+  function dismissWaiting() {
+    waitingDismissed = true;
+    document.getElementById('waitingOverlay').style.display = 'none';
+  }
+
+  function stopWaiting() {
+    waitingDismissed = false;
+    clearInterval(waitingCounter);
+    clearInterval(statusPollInterval);
+    document.getElementById('waitingOverlay').style.display = 'none';
+  }
+
+  function cancelRequest() {
+    if (activeRequestId) {
+      apiPost(`/connect/request/${activeRequestId}/cancel/`);
+    }
+    activeRequestId   = null;
+    pendingRevealData = null;
+    friendWaitStartMs = null;
+    stopWaiting();
+  }
+
+  function showRevealCard(data) {
+    document.getElementById('revealName').textContent = data.other_name;
+    document.getElementById('revealUni').textContent   = data.other_country || '';
+
+    const score = data.compatibility_score || 0;
+    document.getElementById('compatPercent').textContent = score + '%';
+    document.getElementById('compatFill').style.width    = '0%';
+
+    document.getElementById('startChatBtn').href = data.conversation_id
+      ? `/chat/${data.conversation_id}/`
+      : "{% url 'chat:inbox' %}";
+
+    document.getElementById('revealOverlay').style.display = 'flex';
+
+    setTimeout(() => {
+      const identity = document.getElementById('revealIdentity');
+      identity.classList.add('revealed');
+      setTimeout(() => {
+        document.getElementById('compatFill').style.width = score + '%';
+      }, 600);
+    }, 200);
+  }
+
+  function tryAgain() {
+    hideAllOverlays();
+    startMatching('friend');
+  }
+
+  function hideAllOverlays() {
+    ['matchingOverlay', 'waitingOverlay', 'revealOverlay', 'groupWaitingOverlay',
+     'groupRevealOverlay', 'declineOverlay', 'noMatchOverlay'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    const identity = document.getElementById('revealIdentity');
+    if (identity) identity.classList.remove('revealed');
+  }
+
+  // -----------------------------------------------------------
+  // JOIN A GROUP
+  // No longer instant-always: if there's nobody else to group with yet,
+  // this parks the user in a waiting room (mirrors the 1:1 flow) until
+  // a second person joins. Fully independent from any outstanding
+  // Find a Friend request.
+  // -----------------------------------------------------------
+  function doJoinGroup() {
+    apiPost("{% url 'matching:join_group' %}").then(data => {
+      isGroupBusy = false;
+      document.getElementById('joinGroupBtn').setAttribute('aria-busy', 'false');
+
+      if (!data.ok) return;
+
+      if (!data.formed) {
+        activeGroupWaitId = data.group_id;
+        groupWaitStartMs  = new Date(data.joined_at).getTime();
+        showGroupWaitingScreen();
         return;
       }
 
-      const group  = available[Math.floor(Math.random() * available.length)];
-      currentMatch = group;
+      renderGroupReveal(data);
+    });
+  }
 
-      document.getElementById('groupName').textContent = group.name;
+  function renderGroupReveal(data) {
+    document.getElementById('groupName').textContent = data.group_name;
 
-      // Build group members safely using createElement
-      const container = document.getElementById('groupMembers');
-      container.innerHTML = '';
-      group.members.forEach(member => {
-        const row  = document.createElement('div');
-        row.className = 'group-member-row';
+    const container = document.getElementById('groupMembers');
+    container.innerHTML = '';
+    data.members.forEach(member => {
+      const row = document.createElement('div');
+      row.className = 'group-member-row';
 
-        const flag = document.createElement('span');
-        flag.className   = 'group-member-flag';
-        flag.textContent = member.flag;
+      const info = document.createElement('div');
+      info.className = 'group-member-info';
 
-        const info = document.createElement('div');
-        info.className = 'group-member-info';
+      const name = document.createElement('div');
+      name.className   = 'group-member-name';
+      name.textContent = member.name;
 
-        const name = document.createElement('div');
-        name.className   = 'group-member-name';
-        name.textContent = member.name;
+      const country = document.createElement('div');
+      country.className   = 'group-member-uni';
+      country.textContent = member.country || '';
 
-        const uni = document.createElement('div');
-        uni.className   = 'group-member-uni';
-        uni.textContent = member.uni;
-
-        info.appendChild(name);
-        info.appendChild(uni);
-        row.appendChild(flag);
-        row.appendChild(info);
-        container.appendChild(row);
-      });
-
-      // Group shared interests
-      const tagsContainer = document.getElementById('groupSharedTags');
-      tagsContainer.innerHTML = '';
-      group.sharedInterests.forEach(interest => {
-        const tag = document.createElement('span');
-        tag.className   = 'shared-tag';
-        tag.textContent = interest;
-        tagsContainer.appendChild(tag);
-      });
-
-      // Save to GROUP list — separate from friend matches
-      saveToGroupList(group.id);
-
-      // Track groups joined for Group Champion badge
-      const groupsJoined = parseInt(localStorage.getItem('groupsJoined') || '0');
-      localStorage.setItem('groupsJoined', (groupsJoined + 1).toString());
-
-      // Group chat URL includes group ID
-      //Putting change here
-      const membersString = group.members
-  .map(member =>
-    `${member.name}|${member.uni}|${member.country}|${member.flag}`
-  )
-  .join(',');
-
-const interestsString = group.sharedInterests.join(',');
-
-document.getElementById('startGroupChatBtn').href =
-  '/group-converse/?' +
-  'group=' + encodeURIComponent(group.id) +
-  '&name=' + encodeURIComponent(group.name) +
-  '&members=' + encodeURIComponent(membersString) +
-  '&interests=' + encodeURIComponent(interestsString);
-
-      document.getElementById('groupRevealOverlay').style.display = 'flex';
-      resetMatchingLock();
-    }
-
-
-    // -------------------------------------------------------
-    // CANCEL REQUEST
-    // -------------------------------------------------------
-    function cancelRequest() {
-      waitingActive = false;
-      clearInterval(waitingCounter);
-      clearTimeout(window._autoResolveTimer);
-      document.getElementById('waitingOverlay').style.display = 'none';
-      resetMatchingLock();
-    }
-
-
-    // -------------------------------------------------------
-    // TRY AGAIN
-    // -------------------------------------------------------
-    function tryAgain() {
-      hideAllOverlays();
-      startMatching(matchingType);
-    }
-
-
-    // -------------------------------------------------------
-    // HIDE ALL OVERLAYS
-    // -------------------------------------------------------
-    function hideAllOverlays() {
-      ['matchingOverlay', 'waitingOverlay', 'revealOverlay',
-       'groupRevealOverlay', 'declineOverlay', 'noMatchOverlay'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-      });
-
-      // Also reset reveal animation so it can play again next time
-      const identity = document.getElementById('revealIdentity');
-      if (identity) identity.classList.remove('revealed');
-    }
-
-
-    // -------------------------------------------------------
-    // RESET MATCHING LOCK
-    // -------------------------------------------------------
-    function resetMatchingLock() {
-      isMatching = false;
-      document.getElementById('findFriendBtn').setAttribute('aria-busy', 'false');
-      document.getElementById('joinGroupBtn').setAttribute('aria-busy',  'false');
-    }
-
-
-    // -------------------------------------------------------
-    // SECRET KEYBOARD SHORTCUTS — FOR DEMO PRESENTATION ONLY
-    //
-    // During presentation press these keys to control the flow:
-    //   A = Force ACCEPT → triggers reveal animation
-    //   D = Force DECLINE → shows no match found screen
-    //
-    // Only works while waiting overlay is visible
-    // Invisible to audience — only presenter knows about this
-    // -------------------------------------------------------
-    document.addEventListener('keydown', (e) => {
-
-      // Only active when waiting screen is showing
-      if (!waitingActive) return;
-
-      if (e.key === 'a' || e.key === 'A') {
-        // Force ACCEPT — cancels auto timer, triggers reveal immediately
-        clearTimeout(window._autoResolveTimer);
-        acceptMatch();
-      }
-
-      if (e.key === 'd' || e.key === 'D') {
-        // Force DECLINE — cancels auto timer, shows decline screen
-        clearTimeout(window._autoResolveTimer);
-        declineMatch();
-      }
-
+      info.appendChild(name);
+      info.appendChild(country);
+      row.appendChild(info);
+      container.appendChild(row);
     });
 
+    document.getElementById('startGroupChatBtn').href = `/chat/${data.conversation_id}/`;
+    document.getElementById('groupRevealOverlay').style.display = 'flex';
+  }
 
-    // -------------------------------------------------------
-    // PLATFORM ASSISTANT
-    // -------------------------------------------------------
-    const answers = {
-      'How does matching work?':
-        'The Matching Agent finds a compatible student and sends them an anonymous request. Their identity is only revealed to you once they accept — creating a fun surprise! 🎯',
-      'What is group matching?':
-        'Group matching places you in a small group of 3-4 compatible students for group conversation. Great for making multiple friends at once! 👥',
-      'How is compatibility calculated?':
-        'Compatibility is based on shared interests, language overlap, and profile preferences. More shared interests = higher compatibility score! 📊'
-    };
+  function showGroupWaitingScreen() {
+    groupWaitDismissed = false;
+
+    clearInterval(groupWaitingCounter);
+    groupWaitingCounter = startElapsedTimer('groupWaitingTimerDisplay', groupWaitStartMs);
+
+    document.getElementById('groupWaitingOverlay').style.display = 'flex';
+
+    clearInterval(groupStatusPollInterval);
+    groupStatusPollInterval = setInterval(() => {
+      apiGet(`/connect/group/${activeGroupWaitId}/status/`).then(data => {
+        if (data.formed) {
+          clearInterval(groupWaitingCounter);
+          clearInterval(groupStatusPollInterval);
+          pendingGroupRevealData = data;
+
+          if (!groupWaitDismissed) {
+            document.getElementById('groupWaitingOverlay').style.display = 'none';
+            revealPendingGroupResult();
+          }
+          // If dismissed, pendingGroupRevealData just sits ready — the
+          // next "Join a Group" click (now unlocked) shows it instantly.
+        }
+      });
+    }, 2000);
+  }
+
+  // Timer resumes from the REAL elapsed time (groupWaitStartMs), not 0.
+  function reopenGroupWaitingScreen() {
+    hideAllOverlays();
+    groupWaitDismissed = false;
+    document.getElementById('groupWaitingOverlay').style.display = 'flex';
+    clearInterval(groupWaitingCounter);
+    groupWaitingCounter = startElapsedTimer('groupWaitingTimerDisplay', groupWaitStartMs);
+    // groupStatusPollInterval is already running in the background.
+  }
+
+  function revealPendingGroupResult() {
+    renderGroupReveal(pendingGroupRevealData);
+    activeGroupWaitId      = null;
+    pendingGroupRevealData = null;
+    groupWaitStartMs       = null;
+  }
+
+  function dismissGroupWaiting() {
+    groupWaitDismissed = true;
+    document.getElementById('groupWaitingOverlay').style.display = 'none';
+  }
+
+  function cancelGroupWait() {
+    if (activeGroupWaitId) {
+      apiPost(`/connect/group/${activeGroupWaitId}/cancel-wait/`);
+    }
+    activeGroupWaitId      = null;
+    pendingGroupRevealData = null;
+    groupWaitDismissed     = false;
+    groupWaitStartMs       = null;
+    clearInterval(groupWaitingCounter);
+    clearInterval(groupStatusPollInterval);
+    document.getElementById('groupWaitingOverlay').style.display = 'none';
+  }
+
+  // -----------------------------------------------------------
+  // RESUME STATE ON PAGE LOAD
+  // Fixes: navigating away and back used to lose track of an
+  // outstanding friend request or group wait entirely, since they only
+  // lived in JS variables. Ask the server what's actually still
+  // pending and quietly resume background polling for it.
+  // -----------------------------------------------------------
+  (function resumePendingState() {
+    apiGet("{% url 'matching:my_pending_state' %}").then(data => {
+      if (data.friend_request_id) {
+        activeRequestId   = data.friend_request_id;
+        friendWaitStartMs = new Date(data.friend_request_created_at).getTime();
+        waitingDismissed  = true; // don't auto-pop the overlay on load
+        clearInterval(statusPollInterval);
+        statusPollInterval = setInterval(() => {
+          apiGet(`/connect/request/${activeRequestId}/status/`).then(statusData => {
+            if (statusData.status === 'accepted' || statusData.status === 'declined') {
+              clearInterval(statusPollInterval);
+              pendingRevealData = statusData.status === 'accepted' ? statusData : { declined: true };
+            }
+          });
+        }, 2000);
+      }
+
+      if (data.waiting_group_id) {
+        activeGroupWaitId  = data.waiting_group_id;
+        groupWaitStartMs   = new Date(data.waiting_group_joined_at).getTime();
+        groupWaitDismissed = true;
+        clearInterval(groupStatusPollInterval);
+        groupStatusPollInterval = setInterval(() => {
+          apiGet(`/connect/group/${activeGroupWaitId}/status/`).then(statusData => {
+            if (statusData.formed) {
+              clearInterval(groupStatusPollInterval);
+              pendingGroupRevealData = statusData;
+            }
+          });
+        }, 2000);
+      }
+    });
+  })();
+
+
+
+  // -----------------------------------------------------------
+  // PLATFORM ASSISTANT
+  // -----------------------------------------------------------
+  const answers = {
+    'How does matching work?':
+      'The Matching Agent finds a compatible student and sends them a request. Their identity is only revealed to you once they accept — creating a fun surprise! 🎯',
+    'What is group matching?':
+      'Group matching places you in a small group of 3-4 compatible students for group conversation. Great for making multiple friends at once! 👥',
+    'How is compatibility calculated?':
+      'Compatibility is based on shared interests and profile details right now — a real "Matching Agent" AI model will replace this formula in a later phase. 📊'
+  };
 </script>
 {% endblock %}

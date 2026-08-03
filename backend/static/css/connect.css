@@ -52,7 +52,10 @@
 }
 
 .stat-card  { flex: 1; text-align: center; }
-.stat-number { font-size: 26px; font-weight: 800; color: #1e1560; margin-bottom: 4px; }
+.stat-number {
+  font-size: 26px; font-weight: 800; color: #1e1560; margin-bottom: 4px;
+  min-height: 32px; display: flex; align-items: center; justify-content: center;
+}
 .stat-text   { font-size: 18px; }
 .stat-label  { font-size: 11px; color: #aaa; font-weight: 500; }
 
@@ -541,7 +544,7 @@
 
   .action-cards { flex-direction: column; }
 
-  .how-steps { flex-direction: column; gap: 16px; }
+  .how-steps { flex-direction: column; align-items: stretch; gap: 16px; }
   .how-arrow { display: none; }
 
   .stats-row { padding: 16px; }
