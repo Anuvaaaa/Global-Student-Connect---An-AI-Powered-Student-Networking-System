@@ -10,4 +10,5 @@ urlpatterns = [
 
     path('connect/', include('matching.urls')),   # matching app — real
     path('chat/', include('chat.urls')),           # chat app — real
+    path('moderation/', include('moderation.urls')),  # NEW — report_user endpoint
 ]
