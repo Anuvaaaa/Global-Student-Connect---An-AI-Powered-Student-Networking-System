@@ -59,9 +59,11 @@ def compute_compatibility_score(user_a, user_b):
 # CANDIDATE POOL
 # Used by connect_view to decide who's even eligible to be matched.
 # Excludes: self, blocked people (either direction), people already in
-# an active Connection with this user, and people with an unresolved
-# (pending) MatchRequest between the two of them. Filtered to same
-# gender per Profile.gender, per the breakdown doc.
+# an active Connection with this user, people from ANY past connection
+# with this user (active or ended — once you've ended a chat with
+# someone, you should never be re-matched with them, per team decision),
+# and people with an unresolved (pending) MatchRequest between the two.
+# Filtered to same gender per Profile.gender, per the breakdown doc.
 # =====================================================================
 def get_available_matches(user):
     from accounts.models import User  # local import avoids a circular import at module load
@@ -70,13 +72,16 @@ def get_available_matches(user):
     if profile is None:
         return User.objects.none()
 
-    # Everyone the user is already actively connected to
-    already_connected_ids = set(
-        Connection.objects.filter(Q(user_a=user) | Q(user_b=user), status="active")
+    # Everyone the user has EVER been connected to — active or ended.
+    # (Previously this only looked at status="active", which meant a
+    # person you Ended Chat with could get suggested again later. Team
+    # decision: once you've ended a chat with someone, don't re-match.)
+    all_connection_pairs = set(
+        Connection.objects.filter(Q(user_a=user) | Q(user_b=user))
         .values_list("user_a_id", "user_b_id")
     )
     connected_user_ids = set()
-    for a_id, b_id in already_connected_ids:
+    for a_id, b_id in all_connection_pairs:
         connected_user_ids.add(a_id)
         connected_user_ids.add(b_id)
     connected_user_ids.discard(user.id)

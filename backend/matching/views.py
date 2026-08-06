@@ -256,7 +256,7 @@ def accept_match_view(request, request_id):
         user_b=match_request.recipient,
         status="active",
     )
-    Conversation.objects.create(type="direct", connection=connection)
+    conversation = Conversation.objects.create(type="direct", connection=connection)
 
     # --- engagement bookkeeping for both people ---
     from django.db.models import Q as _Q
@@ -287,7 +287,7 @@ def accept_match_view(request, request_id):
         title="Your match request was accepted!",
         description=f"{match_request.recipient.profile.display_name} accepted — say hi!",
         cta_label="Open chat",
-        cta_href="/chat/",
+        cta_href=f"/chat/{conversation.id}/",
     )
 
     return JsonResponse({"ok": True})
