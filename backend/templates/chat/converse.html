@@ -1,7 +1,7 @@
 {% extends 'chat/chat_base.html' %}
 {% load static %}
 
-{% block title_suffix %} — Conversation{% endblock %}
+{% block title_suffix %} — {{ other_name }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/converse.css' %}" />
@@ -10,32 +10,25 @@
 {% block chat_header %}
 <header class="chat-header">
 
-    <!-- Back to inbox -->
-    <a href="/chat/" class="back-btn" aria-label="Back to inbox">
+    <a href="{% url 'chat:inbox' %}" class="back-btn" aria-label="Back to inbox">
       <i class="ph-bold ph-arrow-left"></i>
     </a>
 
-    <!-- Clickable person info — opens profile modal -->
     <div class="chat-person" onclick="openProfileModal()" role="button" tabindex="0">
-      <div class="chat-person-flag" id="personFlag">🌍</div>
+      <div class="chat-person-flag">🌍</div>
       <div class="chat-person-info">
-        <div class="chat-person-name" id="personName">Loading...</div>
-        <!-- Changed from Online to Matched recently — no backend to check real status -->
+        <div class="chat-person-name">{{ other_name }}</div>
         <div class="chat-person-status">
           <span class="status-dot"></span>
-          Matched recently
+          Matched
         </div>
       </div>
     </div>
 
-    <!-- More options button -->
     <button type="button" class="more-btn" onclick="toggleMenu()" aria-label="More options">
       <i class="ph-bold ph-dots-three-vertical"></i>
     </button>
 
-    <!-- ---------------------------------------------------------------
-         DROPDOWN MENU — Report, Block, End Chat
-    --------------------------------------------------------------- -->
     <div class="dropdown-menu" id="dropdownMenu">
 
       <button type="button" class="menu-item" onclick="endChat()">
@@ -61,69 +54,44 @@
 {% endblock %}
 
 {% block content %}
-<div class="messages-area" id="messagesArea">
+<!-- All messages — server-rendered ones AND anything appended later by
+       JS (sent or polled-in) — live as DIRECT children of this element.
+       That matters: .message-wrap.sent/.received rely on align-self,
+       which only works on direct children of a flex container. Never
+       nest messages inside another wrapper div here again. -->
+  <div class="messages-area {% if not auto_translate_on %}no-banner{% endif %}" id="messagesArea">
 
     <div class="date-separator"><span>Today</span></div>
 
-    <!-- ---------------------------------------------------------------
-         HARDCODED RECEIVED MESSAGES
-         Two opening messages from matched person
-         Wording explains context — they just got matched
-         Times are slightly different to look natural
-         In real project messages come from Django WebSocket
-    --------------------------------------------------------------- -->
+    {% for msg in messages %}
+      <div class="message-wrap {% if msg.is_mine %}sent{% else %}received{% endif %}" data-message-id="{{ msg.id }}">
+        {% if not msg.is_mine %}<div class="msg-avatar">🌍</div>{% endif %}
+        <div class="message-bubble {% if msg.is_mine %}sent-bubble{% else %}received-bubble{% endif %}">
+          <div class="msg-text">{{ msg.text }}</div>
 
-    <!-- Received message 1 -->
-    <div class="message-wrap received" id="msg-r1">
-      <div class="msg-avatar" id="msgAvatar1">🌍</div>
-      <div class="message-bubble received-bubble">
-        <div class="msg-text" id="msg-r1-text">
-          Hi! We just got matched 😊 Really happy to meet you!
-        </div>
-        <!-- Translated text — hidden until translate clicked or auto-translate on -->
-        <div class="msg-translated" id="msg-r1-translated"></div>
-        <div class="msg-meta">
-          <span class="msg-time">09:14</span>
-          <!-- Translate button — text changes to Translated ✓ after clicking -->
-          <button type="button" class="translate-btn" id="translate-btn-r1" onclick="translateMessage('msg-r1')">
-            <i class="ph-bold ph-translate"></i>
-            Translate
-          </button>
+          {% if not msg.is_mine %}
+          <div class="msg-translated" {% if auto_translate_on %}style="display:block;"{% endif %}>{{ msg.translated_text }}</div>
+          {% endif %}
+
+          <div class="msg-meta {% if msg.is_mine %}sent-meta{% endif %}">
+            <span class="msg-time">{{ msg.sent_at|time:"H:i" }}</span>
+            {% if msg.is_mine %}
+              <span class="msg-tick">✓✓</span>
+            {% elif not auto_translate_on %}
+              <button type="button" class="translate-btn" onclick="translateMessage(this, {{ msg.id }})">
+                <i class="ph-bold ph-translate"></i>
+                Translate
+              </button>
+            {% endif %}
+          </div>
         </div>
       </div>
-    </div>
-
-    <!-- Received message 2 -->
-    <div class="message-wrap received" id="msg-r2">
-      <div class="msg-avatar" id="msgAvatar2">🌍</div>
-      <div class="message-bubble received-bubble">
-        <div class="msg-text" id="msg-r2-text">
-          What do you study? I'm doing Computer Science 💻 Always looking for people to talk to!
-        </div>
-        <div class="msg-translated" id="msg-r2-translated"></div>
-        <div class="msg-meta">
-          <span class="msg-time">09:15</span>
-          <button type="button" class="translate-btn" id="translate-btn-r2" onclick="translateMessage('msg-r2')">
-            <i class="ph-bold ph-translate"></i>
-            Translate
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- User sent messages injected here by JavaScript -->
-    <div id="sentMessagesContainer"></div>
+    {% endfor %}
 
   </div>
-
-
-  <!-- =====================================================================
-       MESSAGE INPUT BAR
-       Text only — no file or image upload
-  ===================================================================== -->
 {% endblock %}
 
-{% block input_placeholder %}Type a message...{% endblock %}
+{% block input_placeholder %}{% if not connection_active %}This conversation has ended{% else %}Type a message...{% endif %}{% endblock %}
 
 {% block modals %}
 <div class="modal-overlay" id="profileModal">
@@ -136,21 +104,19 @@
         </button>
       </div>
 
-      <!-- Person header inside modal -->
       <div class="profile-modal-top">
-        <div class="profile-modal-flag" id="modalFlag">🌍</div>
-        <div class="profile-modal-name" id="modalName">—</div>
-        <div class="profile-modal-sub"  id="modalSub">—</div>
+        <div class="profile-modal-flag">🌍</div>
+        <div class="profile-modal-name">{{ other_name }}</div>
+        <div class="profile-modal-sub">{{ other_university }} · {{ other_country }}</div>
       </div>
 
-      <!-- Details grid -->
       <div class="profile-modal-details">
 
         <div class="profile-detail-item">
           <i class="ph-bold ph-building"></i>
           <div>
             <div class="detail-label">University</div>
-            <div class="detail-value" id="modalUni">—</div>
+            <div class="detail-value">{{ other_university }}</div>
           </div>
         </div>
 
@@ -158,7 +124,7 @@
           <i class="ph-bold ph-globe"></i>
           <div>
             <div class="detail-label">Country</div>
-            <div class="detail-value" id="modalCountry">—</div>
+            <div class="detail-value">{{ other_country }}</div>
           </div>
         </div>
 
@@ -166,21 +132,25 @@
           <i class="ph-bold ph-star"></i>
           <div>
             <div class="detail-label">Shared Interests</div>
-            <!-- Interests injected as tags by JavaScript -->
-            <div class="detail-interests" id="modalInterests"></div>
+            <div class="detail-interests">
+              {% for interest in shared_interests %}
+                <span class="interest-tag">{{ interest }}</span>
+              {% empty %}
+                <span class="detail-value">None yet</span>
+              {% endfor %}
+            </div>
           </div>
         </div>
 
-        <!-- Compatibility score from match reveal -->
         <div class="profile-detail-item">
           <i class="ph-bold ph-chart-bar"></i>
           <div>
             <div class="detail-label">Compatibility Score</div>
             <div class="compatibility-bar-wrap">
               <div class="mini-compat-bar">
-                <div class="mini-compat-fill" id="modalCompatFill"></div>
+                <div class="mini-compat-fill" style="width: {{ compat_score }}%;"></div>
               </div>
-              <div class="mini-compat-score" id="modalScore">—</div>
+              <div class="mini-compat-score">{{ compat_score }}%</div>
             </div>
           </div>
         </div>
@@ -256,9 +226,9 @@
         </button>
       </div>
 
-      <p class="modal-desc" id="blockModalDesc">
-        Are you sure you want to block this user?
-        They will no longer be able to match with or message you.
+      <p class="modal-desc">
+        Are you sure you want to block {{ other_name }}?
+        Neither of you will be able to see each other's posts, comments, or messages again — this is more than ending the chat.
       </p>
 
       <div class="modal-btns">
@@ -289,7 +259,7 @@
 
       <p class="modal-desc">
         Are you sure you want to end this chat?
-        This will unmatch you from this student and remove the conversation. You can no longer text each other.
+        You'll be unmatched and won't be able to message each other again — but you'll still see each other's posts and comments as normal.
       </p>
 
       <div class="modal-btns">
@@ -303,258 +273,248 @@
 
     </div>
   </div>
-
-
-  <!-- =====================================================================
-       JAVASCRIPT
-  ===================================================================== -->
 {% endblock %}
 
 {% block extra_js %}
 <script>
 
-    // -------------------------------------------------------
-    // READ URL PARAMS
-    // connect.html passes all match details in the URL
-    // Example URL:
-    // converse.html?user=jp_yuki_001&name=Yuki Tanaka
-    // &flag=🇯🇵&uni=Tokyo University&country=Japan
-    // &interests=Music,Coding,Gaming&score=88
-    // -------------------------------------------------------
-    const params      = new URLSearchParams(window.location.search);
-    const userId      = params.get('user')      || 'unknown';
-    const matchName   = decodeURIComponent(params.get('name')      || 'Your Match');
-    const matchFlag   = decodeURIComponent(params.get('flag')      || '🌍');
-    const matchUni    = decodeURIComponent(params.get('uni')       || 'University');
-    const matchCountry= decodeURIComponent(params.get('country')   || 'Unknown');
-    const matchScore  = params.get('score')     || '80';
-    const matchInterests = decodeURIComponent(params.get('interests') || 'Music,Coding')
-      .split(',').map(i => i.trim()).filter(i => i.length > 0);
+    const conversationId = {{ conversation.id }};
+    const sendUrl      = "{% url 'chat:send_message' conversation.id %}";
+    const pollUrl      = "{% url 'chat:poll_messages' conversation.id %}";
+    const endChatUrl   = "{% url 'chat:end_chat' conversation.id %}";
+    const reportUrl    = "{% url 'moderation:report_user' conversation.id %}";
+    const blockUrl     = "{% url 'matching:block_user' other_user.id %}";
+    const inboxUrl     = "{% url 'chat:inbox' %}";
+    const autoTranslateOn = {{ auto_translate_on|yesno:"true,false" }};
 
-    // Fill header
-    document.getElementById('personName').textContent = matchName;
-    document.getElementById('personFlag').textContent = matchFlag;
-
-    // Fill message avatars with matched person's flag
-    document.getElementById('msgAvatar1').textContent = matchFlag;
-    document.getElementById('msgAvatar2').textContent = matchFlag;
-
-    // Update page title — Changed from Chat to Conversation
-    document.title = 'Conversation with ' + matchName + ' — Global Student Connect';
+    let lastMessageId = {{ last_message_id }};
+    let connectionActive = {{ connection_active|yesno:"true,false" }};
 
     // -------------------------------------------------------
-    // AUTO TRANSLATE SETUP
-    // Reads preference from localStorage — set in profile settings
-    // No toggle here — translation is controlled from profile only
+    // CSRF — Django reads this from the csrftoken cookie,
+    // set automatically by @ensure_csrf_cookie on the view.
     // -------------------------------------------------------
-    const autoTranslateOn = localStorage.getItem('userAutoTranslate') !== 'false';
-    const translateInto   = localStorage.getItem('translateInto') ||
-                            localStorage.getItem('userLang1') ||
-                            'English';
-
-    // Show or hide the auto translate banner
-const banner = document.getElementById('translateBanner');
-
-const translateButtons =
-    document.querySelectorAll('.translate-btn');
-
-if (autoTranslateOn) {
-
-    banner.style.display = 'flex';
-
-    document.getElementById('translateBannerText').textContent =
-        'Auto-translating messages to ' + translateInto;
-
-    // Hide manual translate buttons
-    translateButtons.forEach(btn => {
-        btn.style.display = 'none';
-    });
-
-    // Auto translate all messages
-    setTimeout(() => {
-        translateMessage('msg-r1', true);
-        translateMessage('msg-r2', true);
-    }, 800);
-
-}
-else {
-
-    banner.style.display = 'none';
-
-    // Show manual translate buttons
-    translateButtons.forEach(btn => {
-        btn.style.display = 'inline-flex';
-    });
-
-}
-
-    // -------------------------------------------------------
-    // FAKE TRANSLATIONS
-    // In real project Translation Agent calls translation API
-    // Translations available in common languages
-    // -------------------------------------------------------
-    const fakeTranslations = {
-      'msg-r1': {
-        'Bengali':    'হ্যালো! আমরা এইমাত্র ম্যাচ হয়েছি 😊 তোমার সাথে পরিচিত হয়ে সত্যিই খুশি!',
-        'Hindi':      'नमस्ते! हम अभी मैच हुए 😊 आपसे मिलकर वाकई खुशी हुई!',
-        'Arabic':     'مرحباً! لقد تم توافقنا للتو 😊 سعيد جداً بلقائك!',
-        'Spanish':    '¡Hola! Acabamos de hacer match 😊 ¡Muy contento de conocerte!',
-        'French':     'Salut! On vient juste de se matcher 😊 Vraiment content de te rencontrer!',
-        'Mandarin':   '你好！我们刚刚匹配到了 😊 很高兴认识你！',
-        'Malay':      'Hai! Kita baru sahaja dipadankan 😊 Sangat gembira bertemu dengan awak!',
-        'default':    '[Auto-translated to ' + translateInto + '] Hi! We just got matched 😊 Really happy to meet you!'
-      },
-      'msg-r2': {
-        'Bengali':    'তুমি কী পড়াশোনা করো? আমি কম্পিউটার সায়েন্স করছি 💻 সবসময় কথা বলার মানুষ খুঁজি!',
-        'Hindi':      'आप क्या पढ़ते हैं? मैं कंप्यूटर साइंस कर रहा हूं 💻 हमेशा बात करने के लिए लोगों की तलाश में हूं!',
-        'Arabic':     'ماذا تدرس؟ أنا أدرس علوم الحاسب 💻 أبحث دائماً عن أشخاص للتحدث معهم!',
-        'Spanish':    '¿Qué estudias? Estoy haciendo Informática 💻 ¡Siempre buscando personas con quien hablar!',
-        'French':     'Qu\'est-ce que tu étudies? Je fais de l\'informatique 💻 Je cherche toujours des gens à qui parler!',
-        'Mandarin':   '你学什么专业？我在学计算机科学 💻 总是在找人聊天！',
-        'Malay':      'Apa yang awak belajar? Saya buat Sains Komputer 💻 Selalu mencari orang untuk bercakap!',
-        'default':    '[Auto-translated to ' + translateInto + '] What do you study? I\'m doing Computer Science 💻 Always looking for people to talk to!'
+    function getCookie(name) {
+      let value = null;
+      if (document.cookie && document.cookie !== '') {
+        document.cookie.split(';').forEach(cookie => {
+          const c = cookie.trim();
+          if (c.startsWith(name + '=')) value = decodeURIComponent(c.substring(name.length + 1));
+        });
       }
-    };
+      return value;
+    }
+    const csrftoken = getCookie('csrftoken');
 
-    // Translate a received message
-    // isAuto = true means auto-translate triggered it (not user click)
-    function translateMessage(msgId, isAuto) {
+    // -------------------------------------------------------
+    // AUTO TRANSLATE BANNER
+    // Driven by the viewer's real Profile.auto_translate,
+    // rendered server-side — no more localStorage.
+    // -------------------------------------------------------
+    const banner = document.getElementById('translateBanner');
+    {% if auto_translate_on %}
+      banner.style.display = 'flex';
+      document.getElementById('translateBannerText').textContent =
+        'Auto-translating messages to {{ translate_into|escapejs }}';
+    {% else %}
+      banner.style.display = 'none';
+    {% endif %}
 
-      const translatedEl = document.getElementById(msgId + '-translated');
-      const translateBtn = document.getElementById('translate-btn-' + msgId.replace('msg-', ''));
-      if (!translatedEl) return;
-
-      // Get translation for user's preferred language
-      const translations = fakeTranslations[msgId];
-      const translated   = translations[translateInto] || translations['default'];
-
-      // Show translated text
-      translatedEl.textContent = translated;
-      translatedEl.style.display = 'block';
-
-      // FIX: Change button to "Translated ✓" instead of hiding it
-      // More polished UX — user knows translation happened
-      if (!isAuto && translateBtn) {
-
-        translateBtn.innerHTML =
-        '<i class="ph-bold ph-check"></i> Translated ✓';
-
-        translateBtn.classList.add('translated');
-
-        translateBtn.disabled = true;
-
+    // -------------------------------------------------------
+    // CONVERSATION-ENDED STATE — disables the input bar, either
+    // immediately on page load (if it was already ended) or live
+    // via polling (if the other person ends it while you're still
+    // sitting in the chatbox).
+    // -------------------------------------------------------
+    function disableInputForEndedChat(showToastMessage) {
+      connectionActive = false;
+      const input = document.getElementById('messageInput');
+      const sendBtn = document.querySelector('.send-btn');
+      input.disabled = true;
+      input.placeholder = 'This conversation has ended';
+      sendBtn.disabled = true;
+      sendBtn.style.opacity = '0.5';
+      sendBtn.style.cursor = 'not-allowed';
+      if (showToastMessage) showToast(showToastMessage);
     }
 
-      // Track translations for Language Bridge badge
-      if (!isAuto) {
-        let used = parseInt(localStorage.getItem('translationsUsed') || '0');
-        localStorage.setItem('translationsUsed', (used + 1).toString());
-      }
+    if (!connectionActive) {
+      disableInputForEndedChat(null); // already ended before page load — no toast needed
     }
 
     // -------------------------------------------------------
-    // SEND MESSAGE
-    // XSS safe — uses textContent not innerHTML
-    // FIX: Tracks conversationCount properly for missions
+    // BUILD A MESSAGE ELEMENT — used for BOTH a message you just sent
+    // AND a message that arrives via polling. Always appended directly
+    // to #messagesArea (the real flex container), never into a nested
+    // wrapper div — that mismatch was what broke alignment before.
     // -------------------------------------------------------
-    let hasTrackedConversation = false; // Only count once per session
+    function appendMessage(m) {
+      const wrap = document.createElement('div');
+      wrap.className = 'message-wrap ' + (m.is_mine ? 'sent' : 'received');
+      wrap.dataset.messageId = m.id;
 
+      if (!m.is_mine) {
+        const avatar = document.createElement('div');
+        avatar.className = 'msg-avatar';
+        avatar.textContent = '🌍';
+        wrap.appendChild(avatar);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble ' + (m.is_mine ? 'sent-bubble' : 'received-bubble');
+
+      const msgText = document.createElement('div');
+      msgText.className = 'msg-text';
+      msgText.textContent = m.text; // textContent — safe from XSS
+      bubble.appendChild(msgText);
+
+      if (!m.is_mine) {
+        const translatedEl = document.createElement('div');
+        translatedEl.className = 'msg-translated';
+        if (m.translated_text) {
+          translatedEl.textContent = m.translated_text;
+          translatedEl.style.display = autoTranslateOn ? 'block' : 'none';
+        }
+        bubble.appendChild(translatedEl);
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'msg-meta' + (m.is_mine ? ' sent-meta' : '');
+
+      const time = document.createElement('span');
+      time.className = 'msg-time';
+      time.textContent = m.sent_at;
+      meta.appendChild(time);
+
+      if (m.is_mine) {
+        const tick = document.createElement('span');
+        tick.className = 'msg-tick';
+        tick.textContent = '✓✓';
+        meta.appendChild(tick);
+      } else if (!autoTranslateOn) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'translate-btn';
+        btn.innerHTML = '<i class="ph-bold ph-translate"></i> Translate';
+        btn.onclick = function () { translateMessage(btn, m.id); };
+        meta.appendChild(btn);
+      }
+
+      bubble.appendChild(meta);
+      wrap.appendChild(bubble);
+      document.getElementById('messagesArea').appendChild(wrap);
+    }
+
+    // -------------------------------------------------------
+    // SEND MESSAGE — real AJAX call, appends the confirmed
+    // message returned by the server (not an optimistic guess)
+    // -------------------------------------------------------
     function sendMessage() {
+      if (!connectionActive) {
+        showToast('This conversation has ended');
+        return;
+      }
+
       const input = document.getElementById('messageInput');
       const text  = input.value.trim();
       if (!text) return;
 
-      // Build sent message bubble safely using createElement
-      const wrap   = document.createElement('div');
-      wrap.className = 'message-wrap sent';
-
-      const bubble = document.createElement('div');
-      bubble.className = 'message-bubble sent-bubble';
-
-      const msgText = document.createElement('div');
-      msgText.className   = 'msg-text';
-      msgText.textContent = text; // textContent — XSS safe
-
-      const meta = document.createElement('div');
-      meta.className = 'msg-meta sent-meta';
-
-      const time = document.createElement('span');
-      time.className   = 'msg-time';
-      time.textContent = getCurrentTime();
-
-      const tick = document.createElement('span');
-      tick.className   = 'msg-tick';
-      tick.textContent = '✓✓';
-
-      meta.appendChild(time);
-      meta.appendChild(tick);
-      bubble.appendChild(msgText);
-      bubble.appendChild(meta);
-      wrap.appendChild(bubble);
-
-      document.getElementById('sentMessagesContainer').appendChild(wrap);
-
-      input.value = '';
-      scrollToBottom();
-
-      // Track messages sent for Social Butterfly badge
-      let messagesSent = parseInt(localStorage.getItem('messagesSent') || '0');
-      localStorage.setItem('messagesSent', (messagesSent + 1).toString());
-
-      // FIX: Track conversation count properly for missions
-      // Only count once per conversation session, not per message
-      if (!hasTrackedConversation) {
-        hasTrackedConversation = true;
-        let conversationCount = parseInt(localStorage.getItem('conversationCount') || '0');
-        localStorage.setItem('conversationCount', (conversationCount + 1).toString());
-        // Also mark daily mission as done
-        localStorage.setItem('lastDailyDate', new Date().toDateString());
-      }
+      fetch(sendUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'text=' + encodeURIComponent(text),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.ok) {
+            showToast(data.error || 'Could not send message');
+            if (data.error === 'This conversation has ended') disableInputForEndedChat(null);
+            return;
+          }
+          appendMessage({
+            id: data.message.id,
+            text: data.message.text,
+            sent_at: data.message.sent_at,
+            is_mine: true,
+            translated_text: null,
+          });
+          lastMessageId = data.message.id; // so polling never re-fetches our own message
+          input.value = '';
+          scrollToBottom();
+        })
+        .catch(() => showToast('Network error — message not sent'));
     }
-
-    // Format current time as HH:MM
-    
-
-    // Scroll to bottom of messages
-    
 
     window.addEventListener('load', scrollToBottom);
 
     // -------------------------------------------------------
-    // PROFILE MODAL
-    // Opens when user clicks matched person's name/flag in header
-    // Shows their details passed via URL params from connect.html
+    // POLLING — every 3s, ask the server for anything new since
+    // lastMessageId, AND whether the connection is still active.
+    // Catches both new messages AND the other person ending the chat
+    // while this page is still open.
     // -------------------------------------------------------
-    function openProfileModal() {
-      // Fill modal with matched person's details
-      document.getElementById('modalFlag').textContent    = matchFlag;
-      document.getElementById('modalName').textContent    = matchName;
-      document.getElementById('modalSub').textContent     = matchUni + ' · ' + matchCountry;
-      document.getElementById('modalUni').textContent     = matchUni;
-      document.getElementById('modalCountry').textContent = matchCountry;
-      document.getElementById('modalScore').textContent   = matchScore + '%';
+    let isPolling = false;
 
-      // Fill compatibility bar
-      document.getElementById('modalCompatFill').style.width = matchScore + '%';
+    function pollForNewMessages() {
+      if (isPolling) return;
+      isPolling = true;
 
-      // Build interest tags safely
-      const interestsContainer = document.getElementById('modalInterests');
-      interestsContainer.innerHTML = '';
-      matchInterests.forEach(interest => {
-        const tag = document.createElement('span');
-        tag.className   = 'interest-tag';
-        tag.textContent = interest;
-        interestsContainer.appendChild(tag);
-      });
+      fetch(`${pollUrl}?since=${lastMessageId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.ok) return;
 
-      // Show modal
-      document.getElementById('profileModal').style.display = 'flex';
+          if (data.messages.length > 0) {
+            data.messages.forEach(m => {
+              appendMessage(m);
+              lastMessageId = m.id;
+            });
+            scrollToBottom();
+          }
+
+          if (connectionActive && !data.connection_active) {
+            disableInputForEndedChat('The other person ended this conversation.');
+          }
+        })
+        .catch(() => { /* silent — will just retry in 3s */ })
+        .finally(() => { isPolling = false; });
+    }
+
+    setInterval(pollForNewMessages, 3000);
+
+    // -------------------------------------------------------
+    // TRANSLATE — manual button, only shown when auto-translate is off
+    // -------------------------------------------------------
+    function translateMessage(btn, messageId) {
+      const url = `/chat/${conversationId}/message/${messageId}/translate/`;
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.ok) return;
+          const wrap = btn.closest('.message-wrap');
+          const translatedEl = wrap.querySelector('.msg-translated');
+          translatedEl.textContent = data.translated_text;
+          translatedEl.style.display = 'block';
+          btn.innerHTML = '<i class="ph-bold ph-check"></i> Translated ✓';
+          btn.classList.add('translated');
+          btn.disabled = true;
+        });
     }
 
     // -------------------------------------------------------
-    // DROPDOWN MENU
+    // PROFILE MODAL — real data already rendered server-side,
+    // this just shows it
     // -------------------------------------------------------
-    
+    function openProfileModal() {
+      document.getElementById('profileModal').style.display = 'flex';
+    }
 
     // Close menu when clicking outside
     document.addEventListener('click', (e) => {
@@ -566,7 +526,7 @@ else {
     });
 
     // -------------------------------------------------------
-    // END CHAT
+    // END CHAT — real AJAX call, ends the Connection server-side
     // -------------------------------------------------------
     function endChat() {
       document.getElementById('dropdownMenu').classList.remove('open');
@@ -574,20 +534,24 @@ else {
     }
 
     function confirmEndChat() {
-
-    // Prototype only
-    localStorage.setItem('chatEnded_' + userId, 'true');
-
-    showToast('Conversation ended. You have been unmatched.');
-
-    setTimeout(() => {
-        window.location.href = '/chat/';
-    }, 1800);
-
-}
+      fetch(endChatUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+      })
+        .then(res => res.json())
+        .then(data => {
+          closeModal('endChatModal');
+          if (data.ok) {
+            showToast('Conversation ended. You have been unmatched.');
+            setTimeout(() => { window.location.href = inboxUrl; }, 1500);
+          } else {
+            showToast(data.error || 'Could not end chat');
+          }
+        });
+    }
 
     // -------------------------------------------------------
-    // REPORT USER
+    // REPORT USER — real AJAX call, creates a Report row
     // -------------------------------------------------------
     function reportUser() {
       document.getElementById('dropdownMenu').classList.remove('open');
@@ -600,31 +564,49 @@ else {
         showToast('Please select a reason first');
         return;
       }
-      closeModal('reportModal');
-      showToast('Report submitted. Our Safety Agent will review it. 🛡️');
+
+      fetch(reportUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'reason=' + encodeURIComponent(reason.value),
+      })
+        .then(res => res.json())
+        .then(data => {
+          closeModal('reportModal');
+          showToast(data.ok
+            ? 'Report submitted. Our Safety Agent will review it. 🛡️'
+            : (data.error || 'Could not submit report'));
+        });
     }
 
     // -------------------------------------------------------
-    // BLOCK USER
+    // BLOCK USER — real AJAX call to matching:block_user
+    // (the cascade — Block row + ends the Connection)
     // -------------------------------------------------------
     function blockUser() {
       document.getElementById('dropdownMenu').classList.remove('open');
-      document.getElementById('blockModalDesc').textContent =
-        'Are you sure you want to block ' + matchName + '? ' +
-        'They will no longer be able to match with or send you messages.';
       document.getElementById('blockModal').style.display = 'flex';
     }
 
     function confirmBlock() {
-      closeModal('blockModal');
-      showToast(matchName + ' has been blocked. 🚫');
-      setTimeout(() => { window.location.href = '/chat/'; }, 2000);
+      fetch(blockUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+      })
+        .then(res => res.json())
+        .then(data => {
+          closeModal('blockModal');
+          if (data.ok) {
+            showToast('{{ other_name|escapejs }} has been blocked. 🚫');
+            setTimeout(() => { window.location.href = inboxUrl; }, 1500);
+          } else {
+            showToast(data.error || 'Could not block user');
+          }
+        });
     }
-
-    // -------------------------------------------------------
-    // CLOSE MODAL
-    // -------------------------------------------------------
-    
 
     // Click overlay to close
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -633,11 +615,5 @@ else {
       });
     });
 
-    // -------------------------------------------------------
-    // TOAST NOTIFICATION
-    // -------------------------------------------------------
-    
-
-  
 </script>
 {% endblock %}
