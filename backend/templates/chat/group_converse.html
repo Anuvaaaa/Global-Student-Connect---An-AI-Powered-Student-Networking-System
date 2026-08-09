@@ -1,7 +1,7 @@
 {% extends 'chat/chat_base.html' %}
 {% load static %}
 
-{% block title_suffix %} — Group Conversation{% endblock %}
+{% block title_suffix %} — {{ group.name }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/group_converse.css' %}" />
@@ -10,19 +10,17 @@
 {% block chat_header %}
 <header class="chat-header">
 
-    <a href="/chat/" class="back-btn" aria-label="Back to inbox">
+    <a href="{% url 'chat:inbox' %}" class="back-btn" aria-label="Back to inbox">
       <i class="ph-bold ph-arrow-left"></i>
     </a>
 
-    <!-- Clickable group info — opens group info modal -->
-    <!-- tabindex="0" + keydown listener makes it keyboard accessible -->
     <div class="chat-group" id="chatGroupHeader" onclick="openGroupModal()" role="button" tabindex="0" aria-label="Open group info">
       <div class="group-icon-circle">
         <i class="ph-bold ph-users-three"></i>
       </div>
       <div class="chat-group-info">
-        <div class="chat-group-name" id="groupName">Loading...</div>
-        <div class="chat-group-sub"  id="groupSub">Group Chat</div>
+        <div class="chat-group-name">{{ group.name }}</div>
+        <div class="chat-group-sub">{{ member_count }} member{{ member_count|pluralize }} · Group Chat</div>
       </div>
     </div>
 
@@ -30,7 +28,6 @@
       <i class="ph-bold ph-dots-three-vertical"></i>
     </button>
 
-    <!-- Dropdown menu -->
     <div class="dropdown-menu" id="dropdownMenu">
       <button type="button" class="menu-item leave-item" onclick="leaveGroup()">
         <i class="ph-bold ph-sign-out"></i>
@@ -45,107 +42,68 @@
 
   </header>
 
-  <!-- =====================================================================
-       MEMBERS BAR
-       Small chips showing who is in the group
-  ===================================================================== -->
+  <!-- MEMBERS BAR -->
   <div class="members-bar">
-    <div class="members-bar-inner" id="membersBar"></div>
+    <div class="members-bar-inner" id="membersBar">
+      {% for member in other_members %}
+        <div class="member-chip">
+          <span class="member-chip-flag">{{ member.country_code }}</span>
+          <span class="member-chip-name">{{ member.first_name }}</span>
+        </div>
+      {% endfor %}
+      <div class="member-chip you-chip">
+        <span class="member-chip-name">+ You</span>
+      </div>
+    </div>
   </div>
 {% endblock %}
 
 {% block content %}
 <div class="messages-area" id="messagesArea">
 
-    <div class="date-separator"><span>Today</span></div>
-
-    <!-- System message -->
     <div class="system-message">
       You were added to this group by the Matching Agent 🤝
     </div>
 
-    <!-- ---------------------------------------------------------------
-         HARDCODED GROUP MESSAGES
-         Sender names and flags filled by JS from URL params
-         Auto translate: messages translated automatically, no buttons
-         Manual translate: button shown, changes to "Translated ✓" on click
-    --------------------------------------------------------------- -->
+    {% for msg in messages %}
+      {% if msg.show_separator %}
+        <div class="date-separator"><span>{{ msg.date_label }}</span></div>
+      {% endif %}
+      <div class="message-wrap {% if msg.is_mine %}sent{% else %}received group-msg{% endif %}" data-message-id="{{ msg.id }}">
 
-    <!-- Message 1 -->
-    <div class="message-wrap received group-msg" id="msg-r1">
-      <div class="msg-sender-info">
-        <span class="msg-sender-flag" id="sender1Flag">🌍</span>
-        <span class="msg-sender-name" id="sender1Name">Member</span>
-      </div>
-      <div class="message-bubble received-bubble">
-        <div class="msg-text" id="msg-r1-text">
-          Hi everyone! So excited to be in this group 👋 Let's get to know each other!
+        {% if not msg.is_mine %}
+        <div class="msg-sender-info">
+          <span class="msg-sender-flag">{{ msg.sender_country_code }}</span>
+          <span class="msg-sender-name">{{ msg.sender_name }}</span>
         </div>
-        <div class="msg-translated" id="msg-r1-translated"></div>
-        <div class="msg-meta">
-          <span class="msg-time">09:14</span>
-          <button type="button" class="translate-btn" id="translate-btn-r1" onclick="translateMessage('msg-r1')">
-            <i class="ph-bold ph-translate"></i>
-            Translate
-          </button>
-        </div>
-      </div>
-    </div>
+        {% endif %}
 
-    <!-- Message 2 -->
-    <div class="message-wrap received group-msg" id="msg-r2">
-      <div class="msg-sender-info">
-        <span class="msg-sender-flag" id="sender2Flag">🌍</span>
-        <span class="msg-sender-name" id="sender2Name">Member</span>
-      </div>
-      <div class="message-bubble received-bubble">
-        <div class="msg-text" id="msg-r2-text">
-          Same here! What does everyone study? I'm doing Engineering 😊
-        </div>
-        <div class="msg-translated" id="msg-r2-translated"></div>
-        <div class="msg-meta">
-          <span class="msg-time">09:15</span>
-          <button type="button" class="translate-btn" id="translate-btn-r2" onclick="translateMessage('msg-r2')">
-            <i class="ph-bold ph-translate"></i>
-            Translate
-          </button>
-        </div>
-      </div>
-    </div>
+        <div class="message-bubble {% if msg.is_mine %}sent-bubble{% else %}received-bubble{% endif %}">
+          <div class="msg-text">{{ msg.text }}</div>
 
-    <!-- Message 3 -->
-    <div class="message-wrap received group-msg" id="msg-r3">
-      <div class="msg-sender-info">
-        <span class="msg-sender-flag" id="sender3Flag">🌍</span>
-        <span class="msg-sender-name" id="sender3Name">Member</span>
-      </div>
-      <div class="message-bubble received-bubble">
-        <div class="msg-text" id="msg-r3-text">
-          Computer Science here! Anyone into gaming? 🎮
-        </div>
-        <div class="msg-translated" id="msg-r3-translated"></div>
-        <div class="msg-meta">
-          <span class="msg-time">09:16</span>
-          <button type="button" class="translate-btn" id="translate-btn-r3" onclick="translateMessage('msg-r3')">
-            <i class="ph-bold ph-translate"></i>
-            Translate
-          </button>
-        </div>
-      </div>
-    </div>
+          {% if not msg.is_mine %}
+          <div class="msg-translated" {% if auto_translate_on %}style="display:block;"{% endif %}>{{ msg.translated_text }}</div>
+          {% endif %}
 
-    <!-- User sent messages and persisted messages appear here -->
-    <div id="sentMessagesContainer"></div>
+          <div class="msg-meta {% if msg.is_mine %}sent-meta{% endif %}">
+            <span class="msg-time">{{ msg.sent_at|time:"H:i" }}</span>
+            {% if msg.is_mine %}
+              <span class="msg-tick">✓✓</span>
+            {% elif not auto_translate_on %}
+              <button type="button" class="translate-btn" onclick="translateMessage(this, {{ msg.id }})">
+                <i class="ph-bold ph-translate"></i>
+                Translate
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
 
   </div>
-
-
-  <!-- =====================================================================
-       MESSAGE INPUT BAR — Text only
-  ===================================================================== -->
 {% endblock %}
 
-{% block input_placeholder %}Message the group...{% endblock %}
+{% block input_placeholder %}{% if not connection_active %}You have left this group{% else %}Message the group...{% endif %}{% endblock %}
 
 {% block modals %}
 <div class="modal-overlay" id="groupModal">
@@ -162,7 +120,7 @@
         <div class="group-modal-icon">
           <i class="ph-bold ph-users-three"></i>
         </div>
-        <div class="group-modal-name" id="modalGroupName">—</div>
+        <div class="group-modal-name">{{ group.name }}</div>
         <div class="group-modal-sub">Group Chat · Matched by Interest</div>
       </div>
 
@@ -172,8 +130,38 @@
           Members
           <span class="group-modal-hint">Tap a member to view profile</span>
         </div>
-        <!-- Member rows injected by JS — each is clickable -->
-        <div class="group-modal-members" id="modalMembers"></div>
+        <div class="group-modal-members">
+          {% for member in other_members %}
+            <div class="modal-member-row clickable"
+                 role="button" tabindex="0"
+                 aria-label="View {{ member.name }}'s profile"
+                 data-name="{{ member.name }}"
+                 data-university="{{ member.university }}"
+                 data-country="{{ member.country }}"
+                 data-country-code="{{ member.country_code }}"
+                 data-languages="{{ member.languages }}"
+                 data-interests="{{ member.interests|join:',' }}"
+                 onclick="openMemberProfile(this)"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMemberProfile(this);}">
+              <span class="modal-member-flag">{{ member.country_code }}</span>
+              <div class="modal-member-info">
+                <div class="modal-member-name">{{ member.name }}</div>
+                <div class="modal-member-uni">{{ member.university }}</div>
+              </div>
+              <i class="ph-bold ph-caret-right member-chevron"></i>
+            </div>
+          {% endfor %}
+
+          <div class="modal-member-row clickable you-row"
+               role="button" tabindex="0"
+               onclick="openItsYou()"
+               onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openItsYou();}">
+            <div class="modal-member-info">
+              <div class="modal-member-name">You</div>
+            </div>
+            <span class="you-badge">You</span>
+          </div>
+        </div>
       </div>
 
       <div class="group-modal-section">
@@ -181,7 +169,13 @@
           <i class="ph-bold ph-star"></i>
           Shared Interests
         </div>
-        <div class="group-modal-interests" id="modalInterests"></div>
+        <div class="group-modal-interests">
+          {% for interest in shared_group_interests %}
+            <span class="interest-tag">{{ interest }}</span>
+          {% empty %}
+            <span class="detail-value">No interests shared by everyone yet</span>
+          {% endfor %}
+        </div>
       </div>
 
       <button type="button" class="modal-close-btn" onclick="closeModal('groupModal')">
@@ -192,12 +186,7 @@
   </div>
 
 
-  <!-- =====================================================================
-       MEMBER PROFILE MODAL
-       Opens when a member row is clicked in Group Info
-       Read-only profile preview — like Discord/Slack member profile
-       Data is hardcoded per fake member for prototype
-  ===================================================================== -->
+  <!-- MEMBER PROFILE MODAL -->
   <div class="modal-overlay" id="memberProfileModal">
     <div class="modal member-profile-modal">
 
@@ -208,14 +197,12 @@
         </button>
       </div>
 
-      <!-- Member header -->
       <div class="member-profile-top">
-        <div class="member-profile-flag" id="mpFlag">🌍</div>
+        <div class="member-profile-flag" id="mpFlag">—</div>
         <div class="member-profile-name" id="mpName">—</div>
-        <div class="member-profile-sub"  id="mpSub">—</div>
+        <div class="member-profile-sub" id="mpSub">—</div>
       </div>
 
-      <!-- Details -->
       <div class="member-profile-details">
 
         <div class="mp-detail-item">
@@ -244,10 +231,7 @@
   </div>
 
 
-  <!-- =====================================================================
-       "THIS IS YOU" MODAL
-       Shown when user clicks their own name in the members list
-  ===================================================================== -->
+  <!-- "THIS IS YOU" MODAL -->
   <div class="modal-overlay" id="itsYouModal">
     <div class="modal its-you-modal">
 
@@ -264,7 +248,7 @@
         <p class="its-you-sub">
           To view or edit your profile, go to the Profile page.
         </p>
-        <a href="/profile/" class="its-you-btn">
+        <a href="{% url 'accounts:profile' %}" class="its-you-btn">
           <i class="ph-bold ph-user-circle"></i>
           Go to My Profile
         </a>
@@ -274,9 +258,7 @@
   </div>
 
 
-  <!-- =====================================================================
-       LEAVE GROUP MODAL
-  ===================================================================== -->
+  <!-- LEAVE GROUP MODAL -->
   <div class="modal-overlay" id="leaveModal">
     <div class="modal">
 
@@ -289,8 +271,8 @@
 
       <p class="modal-desc">
         Are you sure you want to leave this group?
-        It will no longer appear in your inbox and you will
-        not be grouped with these students again.
+        You won't ever be placed back in this specific group — but you may still be grouped with some of the same people in a different group later.
+        This group will no longer appear in your inbox.
       </p>
 
       <div class="modal-btns">
@@ -306,10 +288,7 @@
   </div>
 
 
-  <!-- =====================================================================
-       REPORT MODAL
-       Dynamically shows which member to report
-  ===================================================================== -->
+  <!-- REPORT MODAL -->
   <div class="modal-overlay" id="reportModal">
     <div class="modal">
 
@@ -320,10 +299,14 @@
         </button>
       </div>
 
-      <!-- Member selection — which member to report -->
       <div class="report-section-label">Which member?</div>
-      <div class="report-members" id="reportMembers">
-        <!-- Member radio options injected by JS -->
+      <div class="report-members">
+        {% for member in other_members %}
+          <label class="report-option">
+            <input type="radio" name="reportMember" value="{{ member.user_id }}" />
+            <span>{{ member.country_code }} {{ member.name }}</span>
+          </label>
+        {% endfor %}
       </div>
 
       <div class="report-section-label" style="margin-top:14px;">Reason</div>
@@ -356,79 +339,262 @@
 
     </div>
   </div>
-
-
-  <!-- =====================================================================
-       JAVASCRIPT
-  ===================================================================== -->
 {% endblock %}
 
 {% block extra_js %}
 <script>
 
-    // -------------------------------------------------------
-    // LAYOUT HEIGHT CONSTANTS
-    // Using named constants instead of magic numbers
-    // Makes it easy to update if header sizes change
-    // -------------------------------------------------------
-    const HEADER_HEIGHT  = 64;
-    const MEMBERS_BAR    = 44;
-    const BANNER_HEIGHT  = 38;
-    const INPUT_HEIGHT   = 68;
+    const conversationId  = {{ conversation.id }};
+    const sendUrl    = "{% url 'chat:send_message' conversation.id %}";
+    const pollUrl    = "{% url 'chat:poll_messages' conversation.id %}";
+    const leaveUrl   = "{% url 'chat:leave_group' conversation.id %}";
+    const reportUrl  = "{% url 'moderation:report_user' conversation.id %}";
+    const inboxUrl   = "{% url 'chat:inbox' %}";
+    const autoTranslateOn = {{ auto_translate_on|yesno:"true,false" }};
+
+    let lastMessageId = {{ last_message_id }};
+    let connectionActive = {{ connection_active|yesno:"true,false" }};
+
+    {% if last_date_label %}
+      let lastDateLabel = "{{ last_date_label|escapejs }}";
+    {% else %}
+      let lastDateLabel = null;
+    {% endif %}
 
     // -------------------------------------------------------
-    // READ URL PARAMS
-    // URLSearchParams.get() already decodes — no need for
-    // double decodeURIComponent (fix from code review)
-    // Example URL from connect.html:
-    // group_converse.html?group=group_tech_001
-    // &name=Global Tech Enthusiasts
-    // &members=Rafi Khan|BUET|Bangladesh|🇧🇩,Lukas Bauer|TU Munich|Germany|🇩🇪
-    // &interests=Coding,Gaming
+    // CSRF
     // -------------------------------------------------------
-    const params       = new URLSearchParams(window.location.search);
-    const groupId      = params.get('group')     || 'unknown_group';
-    const groupName    = params.get('name')       || 'Group Chat';
-    const membersRaw   = params.get('members')    || 'Member 1|University|Unknown|🌍,Member 2|University|Unknown|🌍,Member 3|University|Unknown|🌍';
-    const interestsRaw = params.get('interests')  || 'Coding,Gaming';
+    function getCookie(name) {
+      let value = null;
+      if (document.cookie && document.cookie !== '') {
+        document.cookie.split(';').forEach(cookie => {
+          const c = cookie.trim();
+          if (c.startsWith(name + '=')) value = decodeURIComponent(c.substring(name.length + 1));
+        });
+      }
+      return value;
+    }
+    const csrftoken = getCookie('csrftoken');
 
-    // Parse members — format: "Name|University|Country|Flag"
-    const members = membersRaw.split(',').map(m => {
-      const parts = m.split('|');
-      return {
-        name:    parts[0]?.trim() || 'Member',
-        uni:     parts[1]?.trim() || 'University',
-        country: parts[2]?.trim() || 'Unknown',
-        flag:    parts[3]?.trim() || '🌍'
-      };
-    });
+    // -------------------------------------------------------
+    // LAYOUT
+    // -------------------------------------------------------
+    const HEADER_HEIGHT = 64;
+    const MEMBERS_BAR   = 44;
+    const BANNER_HEIGHT = 38;
 
-    // Parse group interests
-    const interests = interestsRaw.split(',').map(i => i.trim()).filter(i => i.length > 0);
+    const banner = document.getElementById('translateBanner');
+    {% if auto_translate_on %}
+      banner.style.display = 'flex';
+      document.getElementById('translateBannerText').textContent =
+        'Auto-translating messages to {{ translate_into|escapejs }}';
+    {% else %}
+      banner.style.display = 'none';
+    {% endif %}
 
-    // Hardcoded member detail profiles for prototype
-    // In real project these come from Django user database
-    // Placeholder until real profiles are integrated
-    const memberProfiles = {
-      'Rafi Khan':    { languages: 'Bengali · English', interests: ['Coding', 'Cricket', 'Football'] },
-      'Lukas Bauer':  { languages: 'German · English',  interests: ['Coding', 'Gaming', 'Reading'] },
-      'Hassan Ali':   { languages: 'Urdu · English',    interests: ['Cricket', 'Coding', 'Travel'] },
-      'Sofia Reyes':  { languages: 'Spanish · English', interests: ['Art & Design', 'Music', 'Travel'] },
-      'Aiden Park':   { languages: 'English · Korean',  interests: ['Gaming', 'Cooking', 'Music'] },
-      'Camille Dubois': { languages: 'French · English', interests: ['Art & Design', 'Travel', 'Photography'] }
-    };
+    document.getElementById('messagesArea').style.top =
+      (HEADER_HEIGHT + MEMBERS_BAR + (autoTranslateOn ? BANNER_HEIGHT : 0)) + 'px';
 
-    // Logged in user's name
-    const myName = localStorage.getItem('userName')?.trim() || 'You';
+    // -------------------------------------------------------
+    // CONVERSATION-ENDED (left group) STATE
+    // -------------------------------------------------------
+    function disableInputForEndedChat(showToastMessage) {
+      connectionActive = false;
+      const input = document.getElementById('messageInput');
+      const sendBtn = document.querySelector('.send-btn');
+      input.disabled = true;
+      input.placeholder = 'You have left this group';
+      sendBtn.disabled = true;
+      sendBtn.style.opacity = '0.5';
+      sendBtn.style.cursor = 'not-allowed';
+      if (showToastMessage) showToast(showToastMessage);
+    }
 
-    // Update page title and header
-    document.title = groupName + ' — Global Student Connect';
-    document.getElementById('groupName').textContent = groupName;
-    document.getElementById('groupSub').textContent  = members.length + ' members · Group Chat';
+    if (!connectionActive) {
+      disableInputForEndedChat(null);
+    }
+
+    // -------------------------------------------------------
+    // BUILD A MESSAGE ELEMENT
+    // -------------------------------------------------------
+    function appendMessage(m) {
+      if (lastDateLabel !== 'Today') {
+        const sep = document.createElement('div');
+        sep.className = 'date-separator';
+        const span = document.createElement('span');
+        span.textContent = 'Today';
+        sep.appendChild(span);
+        document.getElementById('messagesArea').appendChild(sep);
+        lastDateLabel = 'Today';
+      }
+
+      const wrap = document.createElement('div');
+      wrap.className = 'message-wrap ' + (m.is_mine ? 'sent' : 'received group-msg');
+      wrap.dataset.messageId = m.id;
+
+      if (!m.is_mine) {
+        const senderInfo = document.createElement('div');
+        senderInfo.className = 'msg-sender-info';
+
+        const flag = document.createElement('span');
+        flag.className = 'msg-sender-flag';
+        flag.textContent = m.sender_country_code || '—';
+
+        const name = document.createElement('span');
+        name.className = 'msg-sender-name';
+        name.textContent = m.sender_name || 'Member';
+
+        senderInfo.appendChild(flag);
+        senderInfo.appendChild(name);
+        wrap.appendChild(senderInfo);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble ' + (m.is_mine ? 'sent-bubble' : 'received-bubble');
+
+      const msgText = document.createElement('div');
+      msgText.className = 'msg-text';
+      msgText.textContent = m.text;
+      bubble.appendChild(msgText);
+
+      if (!m.is_mine) {
+        const translatedEl = document.createElement('div');
+        translatedEl.className = 'msg-translated';
+        if (m.translated_text) {
+          translatedEl.textContent = m.translated_text;
+          translatedEl.style.display = autoTranslateOn ? 'block' : 'none';
+        }
+        bubble.appendChild(translatedEl);
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'msg-meta' + (m.is_mine ? ' sent-meta' : '');
+
+      const time = document.createElement('span');
+      time.className = 'msg-time';
+      time.textContent = m.sent_at;
+      meta.appendChild(time);
+
+      if (m.is_mine) {
+        const tick = document.createElement('span');
+        tick.className = 'msg-tick';
+        tick.textContent = '✓✓';
+        meta.appendChild(tick);
+      } else if (!autoTranslateOn) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'translate-btn';
+        btn.innerHTML = '<i class="ph-bold ph-translate"></i> Translate';
+        btn.onclick = function () { translateMessage(btn, m.id); };
+        meta.appendChild(btn);
+      }
+
+      bubble.appendChild(meta);
+      wrap.appendChild(bubble);
+      document.getElementById('messagesArea').appendChild(wrap);
+    }
+
+    // -------------------------------------------------------
+    // SEND MESSAGE
+    // -------------------------------------------------------
+    function sendMessage() {
+      if (!connectionActive) {
+        showToast('You have left this group');
+        return;
+      }
+
+      const input = document.getElementById('messageInput');
+      const text  = input.value.trim();
+      if (!text) return;
+
+      fetch(sendUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'text=' + encodeURIComponent(text),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.ok) {
+            showToast(data.error || 'Could not send message');
+            if (data.error === 'You have left this group') disableInputForEndedChat(null);
+            return;
+          }
+          appendMessage({
+            id: data.message.id,
+            text: data.message.text,
+            sent_at: data.message.sent_at,
+            is_mine: true,
+            translated_text: null,
+          });
+          lastMessageId = data.message.id;
+          input.value = '';
+          scrollToBottom();
+        })
+        .catch(() => showToast('Network error — message not sent'));
+    }
+
+    window.addEventListener('load', scrollToBottom);
+
+    // -------------------------------------------------------
+    // POLLING
+    // -------------------------------------------------------
+    let isPolling = false;
+
+    function pollForNewMessages() {
+      if (isPolling) return;
+      isPolling = true;
+
+      fetch(`${pollUrl}?since=${lastMessageId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.ok) return;
+
+          if (data.messages.length > 0) {
+            data.messages.forEach(m => {
+              appendMessage(m);
+              lastMessageId = m.id;
+            });
+            scrollToBottom();
+          }
+
+          if (connectionActive && !data.connection_active) {
+            disableInputForEndedChat('You have left this group.');
+          }
+        })
+        .catch(() => {})
+        .finally(() => { isPolling = false; });
+    }
+
+    setInterval(pollForNewMessages, 3000);
+
+    // -------------------------------------------------------
+    // TRANSLATE
+    // -------------------------------------------------------
+    function translateMessage(btn, messageId) {
+      const url = `/chat/${conversationId}/message/${messageId}/translate/`;
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.ok) return;
+          const wrap = btn.closest('.message-wrap');
+          const translatedEl = wrap.querySelector('.msg-translated');
+          translatedEl.textContent = data.translated_text;
+          translatedEl.style.display = 'block';
+          btn.innerHTML = '<i class="ph-bold ph-check"></i> Translated ✓';
+          btn.classList.add('translated');
+          btn.disabled = true;
+        });
+    }
 
     // -------------------------------------------------------
     // KEYBOARD ACCESSIBILITY
-    // Chat group header div responds to Enter and Space
     // -------------------------------------------------------
     document.getElementById('chatGroupHeader').addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -438,391 +604,47 @@
     });
 
     // -------------------------------------------------------
-    // BUILD MEMBERS BAR
-    // Small chips below the header
-    // -------------------------------------------------------
-    const membersBarEl = document.getElementById('membersBar');
-
-    members.forEach(member => {
-      const chip = document.createElement('div');
-      chip.className = 'member-chip';
-
-      const flag = document.createElement('span');
-      flag.className   = 'member-chip-flag';
-      flag.textContent = member.flag;
-
-      const name = document.createElement('span');
-      name.className   = 'member-chip-name';
-      name.textContent = member.name.split(' ')[0];
-
-      chip.appendChild(flag);
-      chip.appendChild(name);
-      membersBarEl.appendChild(chip);
-    });
-
-    // "You" chip
-    const youChip = document.createElement('div');
-    youChip.className = 'member-chip you-chip';
-    const youSpan = document.createElement('span');
-    youSpan.className   = 'member-chip-name';
-    youSpan.textContent = '+ You';
-    youChip.appendChild(youSpan);
-    membersBarEl.appendChild(youChip);
-
-    // -------------------------------------------------------
-    // ASSIGN SENDERS TO HARDCODED MESSAGES
-    // -------------------------------------------------------
-    if (members[0]) {
-      document.getElementById('sender1Flag').textContent = members[0].flag;
-      document.getElementById('sender1Name').textContent = members[0].name;
-    }
-    if (members[1]) {
-      document.getElementById('sender2Flag').textContent = members[1].flag;
-      document.getElementById('sender2Name').textContent = members[1].name;
-    }
-    if (members[2]) {
-      document.getElementById('sender3Flag').textContent = members[2].flag;
-      document.getElementById('sender3Name').textContent = members[2].name;
-    } else {
-      document.getElementById('msg-r3').style.display = 'none';
-    }
-
-    // -------------------------------------------------------
-    // AUTO TRANSLATE SETUP
-    // ON  → banner shown, translate buttons hidden, auto translate runs
-    // OFF → banner hidden, translate buttons visible per message
-    // -------------------------------------------------------
-    const autoTranslateOn = localStorage.getItem('userAutoTranslate') !== 'false';
-    const translateInto   = localStorage.getItem('translateInto') ||
-                            localStorage.getItem('userLang1') ||
-                            'English';
-
-    const banner = document.getElementById('translateBanner');
-
-    if (autoTranslateOn) {
-      banner.style.display = 'flex';
-      document.getElementById('translateBannerText').textContent =
-        'Auto-translating messages to ' + translateInto;
-
-      // Hide manual translate buttons — not needed when auto is ON
-      document.querySelectorAll('.translate-btn').forEach(btn => {
-        btn.style.display = 'none';
-      });
-
-      // Auto translate all messages then scroll to bottom
-      setTimeout(() => {
-        translateMessage('msg-r1', true);
-        translateMessage('msg-r2', true);
-        translateMessage('msg-r3', true);
-        scrollToBottom(); // Scroll after heights change from translation
-      }, 800);
-
-    } else {
-      banner.style.display = 'none';
-    }
-
-    // Calculate messages area top using named constants
-    const messagesArea = document.getElementById('messagesArea');
-    messagesArea.style.top = (
-      HEADER_HEIGHT +
-      MEMBERS_BAR +
-      (autoTranslateOn ? BANNER_HEIGHT : 0)
-    ) + 'px';
-
-    // -------------------------------------------------------
-    // FAKE TRANSLATIONS FOR GROUP MESSAGES
-    // Placeholder until Translation Agent API is integrated
-    // In real project Translation Agent calls translation API
-    // based on user's translateInto preference from profile
-    // -------------------------------------------------------
-    const fakeTranslations = {
-      'msg-r1': {
-        'Bengali':  'হ্যালো সবাইকে! এই গ্রুপে থাকতে পেরে অনেক উত্তেজিত 👋 চলো একে অপরকে জানি!',
-        'Hindi':    'हाय सबको! इस ग्रुप में होकर बहुत खुश हूं 👋 चलो एक दूसरे को जानते हैं!',
-        'Arabic':   'مرحباً بالجميع! متحمس جداً لأكون في هذه المجموعة 👋 دعونا نتعرف على بعضنا!',
-        'Spanish':  '¡Hola a todos! Muy emocionado de estar en este grupo 👋 ¡Conozcámonos!',
-        'French':   'Bonjour tout le monde! Très content d\'être dans ce groupe 👋 Faisons connaissance!',
-        'default':  '[Auto-translated to ' + translateInto + '] Hi everyone! So excited to be in this group 👋'
-      },
-      'msg-r2': {
-        'Bengali':  'আমিও! সবাই কী পড়াশোনা করো? আমি ইঞ্জিনিয়ারিং করছি 😊',
-        'Hindi':    'मैं भी! सब क्या पढ़ते हैं? मैं इंजीनियरिंग कर रहा हूं 😊',
-        'Arabic':   'أنا أيضاً! ماذا يدرس الجميع؟ أنا أدرس الهندسة 😊',
-        'Spanish':  '¡Yo también! ¿Qué estudian todos? Yo estudio Ingeniería 😊',
-        'French':   'Pareil! Qu\'est-ce que tout le monde étudie? Je fais de l\'ingénierie 😊',
-        'default':  '[Auto-translated to ' + translateInto + '] Same here! What does everyone study?'
-      },
-      'msg-r3': {
-        'Bengali':  'আমি কম্পিউটার সায়েন্স! কেউ কি গেমিং এ আগ্রহী? 🎮',
-        'Hindi':    'मैं कंप्यूटर साइंस! कोई गेमिंग में है? 🎮',
-        'Arabic':   'أنا علوم الحاسب! هل أحد مهتم بالألعاب؟ 🎮',
-        'Spanish':  '¡Informática aquí! ¿Alguien juega videojuegos? 🎮',
-        'French':   'Informatique ici! Quelqu\'un s\'intéresse aux jeux? 🎮',
-        'default':  '[Auto-translated to ' + translateInto + '] Computer Science here! Anyone into gaming? 🎮'
-      }
-    };
-
-    function translateMessage(msgId, isAuto) {
-      const translatedEl = document.getElementById(msgId + '-translated');
-      const btnId        = 'translate-btn-' + msgId.replace('msg-', '');
-      const translateBtn = document.getElementById(btnId);
-      if (!translatedEl) return;
-
-      const translations = fakeTranslations[msgId];
-      if (!translations) return;
-
-      const translated = translations[translateInto] || translations['default'];
-      translatedEl.textContent = translated;
-      translatedEl.style.display = 'block';
-
-      // Manual click: change button to "Translated ✓" — do not hide it
-      if (!isAuto && translateBtn) {
-        translateBtn.innerHTML = '<i class="ph-bold ph-check"></i> Translated ✓';
-        translateBtn.classList.add('translated');
-        translateBtn.disabled = true;
-
-        // Track for Language Bridge badge
-        let used = parseInt(localStorage.getItem('translationsUsed') || '0');
-        localStorage.setItem('translationsUsed', (used + 1).toString());
-      }
-    }
-
-    // -------------------------------------------------------
-    // MESSAGE PERSISTENCE
-    // Save and load messages per group in localStorage
-    // So conversations survive page refresh
-    // -------------------------------------------------------
-    const STORAGE_KEY = 'groupMessages_' + groupId;
-
-    // Load persisted sent messages on page load
-    function loadPersistedMessages() {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      saved.forEach(msg => renderSentMessage(msg.text, msg.time, false));
-    }
-
-    // Save a new message to localStorage
-    function persistMessage(text, time) {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      saved.push({ text, time });
-      // Keep only last 50 messages to avoid storage overflow
-      if (saved.length > 50) saved.shift();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-    }
-
-    // Render a sent message bubble into the DOM
-    // fromPersist = true means loaded from storage, not tracked again
-    function renderSentMessage(text, time, fromPersist) {
-      const wrap = document.createElement('div');
-      wrap.className = 'message-wrap sent';
-
-      const bubble = document.createElement('div');
-      bubble.className = 'message-bubble sent-bubble';
-
-      const msgText = document.createElement('div');
-      msgText.className   = 'msg-text';
-      msgText.textContent = text; // textContent — XSS safe
-
-      const meta = document.createElement('div');
-      meta.className = 'msg-meta sent-meta';
-
-      const timeEl = document.createElement('span');
-      timeEl.className   = 'msg-time';
-      timeEl.textContent = time;
-
-      const tick = document.createElement('span');
-      tick.className   = 'msg-tick';
-      tick.textContent = '✓✓';
-
-      meta.appendChild(timeEl);
-      meta.appendChild(tick);
-      bubble.appendChild(msgText);
-      bubble.appendChild(meta);
-      wrap.appendChild(bubble);
-
-      document.getElementById('sentMessagesContainer').appendChild(wrap);
-    }
-
-    // Load persisted messages when page opens
-    loadPersistedMessages();
-
-    // -------------------------------------------------------
-    // SEND MESSAGE
-    // -------------------------------------------------------
-    let hasTrackedConversation = false;
-
-    function sendMessage() {
-      const input = document.getElementById('messageInput');
-      const text  = input.value.trim();
-      if (!text) return;
-
-      const time = getCurrentTime();
-
-      // Render and persist
-      renderSentMessage(text, time, false);
-      persistMessage(text, time);
-
-      input.value = '';
-      scrollToBottom();
-
-      // Track messages for Social Butterfly badge
-      let messagesSent = parseInt(localStorage.getItem('messagesSent') || '0');
-      localStorage.setItem('messagesSent', (messagesSent + 1).toString());
-
-      // Track conversation once per session
-      if (!hasTrackedConversation) {
-        hasTrackedConversation = true;
-        let count = parseInt(localStorage.getItem('conversationCount') || '0');
-        localStorage.setItem('conversationCount', (count + 1).toString());
-        localStorage.setItem('lastDailyDate', new Date().toDateString());
-      }
-    }
-
-    
-
-    
-
-    window.addEventListener('load', scrollToBottom);
-
-    // -------------------------------------------------------
     // GROUP INFO MODAL
-    // Each member row clickable — opens mini profile
     // -------------------------------------------------------
     function openGroupModal() {
-      document.getElementById('modalGroupName').textContent = groupName;
-
-      // Build clickable member rows
-      const membersContainer = document.getElementById('modalMembers');
-      membersContainer.innerHTML = '';
-
-      members.forEach(member => {
-        const row = document.createElement('div');
-        row.className  = 'modal-member-row clickable';
-        row.setAttribute('role', 'button');
-        row.setAttribute('tabindex', '0');
-        row.setAttribute('aria-label', 'View ' + member.name + '\'s profile');
-
-        const flag = document.createElement('span');
-        flag.className   = 'modal-member-flag';
-        flag.textContent = member.flag;
-
-        const info = document.createElement('div');
-        info.className = 'modal-member-info';
-
-        const name = document.createElement('div');
-        name.className   = 'modal-member-name';
-        name.textContent = member.name;
-
-        const uni = document.createElement('div');
-        uni.className   = 'modal-member-uni';
-        uni.textContent = member.uni;
-
-        const chevron = document.createElement('i');
-        chevron.className = 'ph-bold ph-caret-right member-chevron';
-
-        info.appendChild(name);
-        info.appendChild(uni);
-        row.appendChild(flag);
-        row.appendChild(info);
-        row.appendChild(chevron);
-
-        // Click opens member profile modal
-        row.addEventListener('click', () => openMemberProfile(member));
-        row.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              openMemberProfile(member);
-  }
-});
-
-        membersContainer.appendChild(row);
-      });
-
-      // "You" row — clicking shows "This is you" modal
-      const youRow = document.createElement('div');
-      youRow.className = 'modal-member-row clickable you-row';
-      youRow.setAttribute('role', 'button');
-      youRow.setAttribute('tabindex', '0');
-
-      const youInfo = document.createElement('div');
-      youInfo.className = 'modal-member-info';
-
-      const youNameEl = document.createElement('div');
-      youNameEl.className   = 'modal-member-name';
-      youNameEl.textContent = myName;
-
-      const youSubEl = document.createElement('div');
-      youSubEl.className   = 'modal-member-uni';
-      youSubEl.textContent = localStorage.getItem('userUni')?.trim() || '';
-
-      const youBadge = document.createElement('span');
-      youBadge.className   = 'you-badge';
-      youBadge.textContent = 'You';
-
-      youInfo.appendChild(youNameEl);
-      youInfo.appendChild(youSubEl);
-      youRow.appendChild(youInfo);
-      youRow.appendChild(youBadge);
-
-      youRow.addEventListener('click', () => {
-        closeModal('groupModal');
-        document.getElementById('itsYouModal').style.display = 'flex';
-      });
-
-      youRow.addEventListener('keydown', e => {
-         if (e.key === 'Enter' || e.key === ' ') {
-             e.preventDefault();
-             closeModal('groupModal');
-             document.getElementById('itsYouModal').style.display = 'flex';
-  }
-});
-
-      membersContainer.appendChild(youRow);
-
-      // Build shared interests
-      const interestsContainer = document.getElementById('modalInterests');
-      interestsContainer.innerHTML = '';
-      interests.forEach(interest => {
-        const tag = document.createElement('span');
-        tag.className   = 'interest-tag';
-        tag.textContent = interest;
-        interestsContainer.appendChild(tag);
-      });
-
+      document.getElementById('dropdownMenu').classList.remove('open');
       document.getElementById('groupModal').style.display = 'flex';
     }
 
     // -------------------------------------------------------
     // MEMBER PROFILE MODAL
-    // Read-only profile preview for each group member
     // -------------------------------------------------------
-    function openMemberProfile(member) {
-      // Fill in member details
-      document.getElementById('mpFlag').textContent = member.flag;
-      document.getElementById('mpName').textContent = member.name;
-      document.getElementById('mpSub').textContent  = member.uni + ' · ' + member.country;
+    function openMemberProfile(row) {
+      document.getElementById('mpFlag').textContent = row.dataset.countryCode;
+      document.getElementById('mpName').textContent = row.dataset.name;
+      document.getElementById('mpSub').textContent =
+        row.dataset.university + ' · ' + row.dataset.country;
+      document.getElementById('mpLanguages').textContent = row.dataset.languages;
 
-      // Get hardcoded profile data for this member
-      // Fallback to generic data if member not in our profile map
-      const profile = memberProfiles[member.name] || {
-        languages: 'English',
-        interests: interests // Use group shared interests as fallback
-      };
+      const interestsEl = document.getElementById('mpInterests');
+      interestsEl.innerHTML = '';
+      const interests = row.dataset.interests ? row.dataset.interests.split(',').filter(Boolean) : [];
+      if (interests.length === 0) {
+        const span = document.createElement('span');
+        span.className = 'mp-detail-value';
+        span.textContent = 'None shared yet';
+        interestsEl.appendChild(span);
+      } else {
+        interests.forEach(interest => {
+          const tag = document.createElement('span');
+          tag.className = 'interest-tag';
+          tag.textContent = interest;
+          interestsEl.appendChild(tag);
+        });
+      }
 
-      document.getElementById('mpLanguages').textContent = profile.languages;
-
-      // Build interest tags
-      const mpInterests = document.getElementById('mpInterests');
-      mpInterests.innerHTML = '';
-      profile.interests.forEach(interest => {
-        const tag = document.createElement('span');
-        tag.className   = 'interest-tag';
-        tag.textContent = interest;
-        mpInterests.appendChild(tag);
-      });
-
-      // Close group modal first then open member profile
       closeModal('groupModal');
       document.getElementById('memberProfileModal').style.display = 'flex';
+    }
+
+    function openItsYou() {
+      closeModal('groupModal');
+      document.getElementById('itsYouModal').style.display = 'flex';
     }
 
     // -------------------------------------------------------
@@ -834,27 +656,22 @@
     }
 
     function confirmLeaveGroup() {
-      // Mark group as left — inbox (chat.html) filters these out
-      localStorage.setItem('leftGroup_' + groupId, 'true');
-
-      // Add to groupMatches so this group never appears again in matching
-      const groupMatches = JSON.parse(localStorage.getItem('groupMatches') || '[]');
-      if (!groupMatches.includes(groupId)) {
-        groupMatches.push(groupId);
-        localStorage.setItem('groupMatches', JSON.stringify(groupMatches));
-      }
-
-      closeModal('leaveModal');
-      showToast('You have left the group.');
-      setTimeout(() => { window.location.href = '/chat/'; }, 1800);
+      fetch(leaveUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+      })
+        .then(res => res.json())
+        .then(data => {
+          closeModal('leaveModal');
+          if (data.ok) {
+            showToast('You have left the group.');
+            setTimeout(() => { window.location.href = inboxUrl; }, 1500);
+          } else {
+            showToast(data.error || 'Could not leave group');
+          }
+        });
     }
 
-    // -------------------------------------------------------
-    // DROPDOWN MENU
-    // -------------------------------------------------------
-    
-
-    // Close dropdown when clicking outside
     document.addEventListener('click', e => {
       const menu    = document.getElementById('dropdownMenu');
       const moreBtn = document.querySelector('.more-btn');
@@ -864,39 +681,14 @@
     });
 
     // -------------------------------------------------------
-    // REPORT — Shows member selection dynamically
+    // REPORT
     // -------------------------------------------------------
     function reportGroup() {
       document.getElementById('dropdownMenu').classList.remove('open');
-
-      // Build member radio options dynamically
-      const reportMembersEl = document.getElementById('reportMembers');
-      reportMembersEl.innerHTML = '';
-
-      members.forEach(member => {
-        const label = document.createElement('label');
-        label.className = 'report-option';
-
-        const radio = document.createElement('input');
-        radio.type  = 'radio';
-        radio.name  = 'reportMember';
-        radio.value = member.name;
-
-        const text = document.createElement('span');
-        text.textContent = member.flag + ' ' + member.name;
-
-        label.appendChild(radio);
-        label.appendChild(text);
-        reportMembersEl.appendChild(label);
-      });
-
-      document.getElementById('reportModal').style.display = 'flex';
-
-      document.querySelectorAll(
-     'input[name="reportMember"], input[name="reportReason"]'
-     ).forEach(input => {
+      document.querySelectorAll('input[name="reportMember"], input[name="reportReason"]').forEach(input => {
         input.checked = false;
-    });
+      });
+      document.getElementById('reportModal').style.display = 'flex';
     }
 
     function submitReport() {
@@ -906,45 +698,47 @@
       if (!member) { showToast('Please select a member to report'); return; }
       if (!reason)  { showToast('Please select a reason'); return; }
 
-      closeModal('reportModal');
-      showToast('Report submitted. Our Safety Agent will review it. 🛡️');
+      fetch(reportUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'reason=' + encodeURIComponent(reason.value) +
+              '&reported_user_id=' + encodeURIComponent(member.value),
+      })
+        .then(res => res.json())
+        .then(data => {
+          closeModal('reportModal');
+          showToast(data.ok
+            ? 'Report submitted. Our Safety Agent will review it. 🛡️'
+            : (data.error || 'Could not submit report'));
+        });
     }
 
     // -------------------------------------------------------
-    // CLOSE MODAL
+    // CLOSE MODAL — overridden here because closing the member
+    // profile modal should reopen the group modal
     // -------------------------------------------------------
     function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+      if (modalId === 'memberProfileModal') {
+        document.getElementById('groupModal').style.display = 'flex';
+      }
+    }
 
-        document.getElementById(modalId).style.display = 'none';
-
-        if (modalId === 'memberProfileModal') {
-           document.getElementById('groupModal').style.display = 'flex';
-  }
-
-}
-
-    // Click overlay to close
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
-      overlay.addEventListener('click', function(e) {
+      overlay.addEventListener('click', function (e) {
         if (e.target === this) closeModal(this.id);
       });
     });
 
-    // ESC key closes dropdown and modals
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         document.getElementById('dropdownMenu').classList.remove('open');
-        document.querySelectorAll('.modal-overlay').forEach(m => {
-          m.style.display = 'none';
-        });
+        document.querySelectorAll('.modal-overlay').forEach(m => { m.style.display = 'none'; });
       }
     });
 
-    // -------------------------------------------------------
-    // TOAST NOTIFICATION
-    // -------------------------------------------------------
-    
-
-  
 </script>
 {% endblock %}
