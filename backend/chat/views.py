@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import MessageForm
 from .models import Conversation
-from .utils import translate_message
+from .utils import country_code_for, date_label_for, translate_message
 from engagement.models import UserEngagement
 from engagement.utils import check_and_award_badges
 from matching.models import GroupMember
@@ -24,8 +24,6 @@ from social.models import Interest, UserInterest
 # =====================================================================
 def _build_inbox_items(user):
     # --- Direct (1:1) conversations — only ones with an ACTIVE connection.
-    # Ended chats (End Chat or Block) drop out of the inbox automatically,
-    # since we never even fetch them here.
     direct_convos = (
         Conversation.objects
         .filter(type='direct', connection__status='active')
@@ -85,7 +83,6 @@ def _build_inbox_items(user):
             'unread': unread,
         })
 
-    # Most recently active first — same rule regardless of type
     items.sort(key=lambda i: i['sent_at'], reverse=True)
     return items
 
@@ -101,11 +98,6 @@ def inbox_view(request):
 
 @login_required
 def inbox_poll_view(request):
-    """
-    Live-refresh endpoint for the inbox page. Polled every few seconds
-    by JS so new messages / unread counts show up without leaving the
-    page — same pattern as the in-conversation polling.
-    """
     items = _build_inbox_items(request.user)
 
     payload = [{
@@ -122,20 +114,7 @@ def inbox_poll_view(request):
 
 
 # =====================================================================
-# SHARED ACCESS CHECK — used by send/poll/(direct+group) views so the
-# "are you even allowed here" rules live in exactly one place instead
-# of being duplicated (and drifting) between direct and group logic.
-#
-# Returns a dict:
-#   ok         — False if the user has no business being in this
-#                conversation at all (not a participant/member, or
-#                blocked). Callers should reject the request.
-#   error      — human-readable reason when ok is False
-#   is_active  — True if the user can still SEND into this conversation
-#                right now (direct: connection still active; group:
-#                user hasn't left). False doesn't mean "reject" — it
-#                means "you can still view/poll, just not send."
-#   other_user — the other participant, ONLY set for direct conversations
+# SHARED ACCESS CHECK
 # =====================================================================
 def _check_conversation_access(request, conversation):
     if conversation.type == 'direct':
@@ -161,10 +140,18 @@ def _check_conversation_access(request, conversation):
     return {'ok': False, 'error': 'Invalid conversation type', 'is_active': False, 'other_user': None}
 
 
+def _attach_date_labels(message_list):
+    last_label = None
+    for m in message_list:
+        label = date_label_for(m['sent_at'])
+        m['date_label'] = label
+        m['show_separator'] = (label != last_label)
+        last_label = label
+    return last_label
+
+
 # =====================================================================
-# CONVERSATION — dispatches to the direct or group renderer based on
-# Conversation.type. One URL (chat:conversation) for both, matching how
-# matching/views.py already hardcodes conversation links as /chat/<id>/.
+# CONVERSATION — dispatches to direct or group based on Conversation.type
 # =====================================================================
 @login_required
 @ensure_csrf_cookie
@@ -176,12 +163,10 @@ def conversation_view(request, conversation_id):
 
     access = _check_conversation_access(request, conversation)
     if not access['ok']:
-        # Blocked, or not a participant — no access to this conversation at all
         return redirect('chat:inbox')
 
     other = access['other_user']
 
-    # Mark incoming messages read now that the user is actually viewing them
     conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
 
     viewer_profile = getattr(request.user, 'profile', None)
@@ -204,7 +189,10 @@ def conversation_view(request, conversation_id):
             'translated_text': translated_text,
         })
 
+    last_date_label = _attach_date_labels(message_list)
+
     other_profile = getattr(other, 'profile', None)
+    other_country = other_profile.country if other_profile and other_profile.country else None
 
     my_interest_ids = set(UserInterest.objects.filter(user=request.user).values_list('interest_id', flat=True))
     other_interest_ids = set(UserInterest.objects.filter(user=other).values_list('interest_id', flat=True))
@@ -218,11 +206,13 @@ def conversation_view(request, conversation_id):
         'other_user': other,
         'other_name': other_profile.display_name if other_profile and other_profile.display_name else other.username,
         'other_university': other.university.name if other.university else 'Unknown University',
-        'other_country': other_profile.country if other_profile and other_profile.country else 'Unknown',
+        'other_country': other_country or 'Unknown',
+        'other_country_code': country_code_for(other_country),
         'shared_interests': shared_interest_names,
         'compat_score': compute_compatibility_score(request.user, other),
         'messages': message_list,
         'last_message_id': message_list[-1]['id'] if message_list else 0,
+        'last_date_label': last_date_label,
         'auto_translate_on': auto_translate_on,
         'translate_into': target_language,
         'connection_active': access['is_active'],
@@ -244,7 +234,6 @@ def group_conversation_view(request, conversation_id):
     if not access['ok']:
         return redirect('chat:inbox')
 
-    # Mark incoming messages read now that the user is actually viewing them
     conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
 
     viewer_profile = getattr(request.user, 'profile', None)
@@ -267,7 +256,10 @@ def group_conversation_view(request, conversation_id):
             'is_mine': msg.sender_id == request.user.id,
             'translated_text': translated_text,
             'sender_name': sender_profile.display_name if sender_profile and sender_profile.display_name else msg.sender.username,
+            'sender_country_code': country_code_for(sender_profile.country if sender_profile else None),
         })
+
+    last_date_label = _attach_date_labels(message_list)
 
     active_memberships = list(
         GroupMember.objects.filter(group=conversation.group, left_at__isnull=True)
@@ -295,6 +287,7 @@ def group_conversation_view(request, conversation_id):
         ])) or 'Not specified'
 
         display_name = member_profile.display_name if member_profile and member_profile.display_name else gm.user.username
+        member_country = member_profile.country if member_profile and member_profile.country else None
 
         other_members.append({
             'user_id': gm.user.id,
@@ -302,14 +295,12 @@ def group_conversation_view(request, conversation_id):
             'first_name': display_name.split(' ')[0],
             'initial': display_name[0].upper(),
             'university': gm.user.university.name if gm.user.university else 'Unknown University',
-            'country': member_profile.country if member_profile and member_profile.country else 'Unknown',
+            'country': member_country or 'Unknown',
+            'country_code': country_code_for(member_country),
             'languages': languages,
             'interests': member_interest_names,
         })
 
-    # Interests common to EVERY currently-active member (including you) —
-    # matches the same "compatible with everyone" spirit as
-    # matching/utils.py's get_open_group_for().
     shared_group_interest_ids = set.intersection(*all_interest_sets) if all_interest_sets else set()
     shared_group_interests = list(
         Interest.objects.filter(id__in=shared_group_interest_ids).values_list('name', flat=True)
@@ -324,9 +315,10 @@ def group_conversation_view(request, conversation_id):
         'shared_group_interests': shared_group_interests,
         'messages': message_list,
         'last_message_id': message_list[-1]['id'] if message_list else 0,
+        'last_date_label': last_date_label,
         'auto_translate_on': auto_translate_on,
         'translate_into': target_language,
-        'connection_active': access['is_active'],  # True unless you've left
+        'connection_active': access['is_active'],
     }
     return render(request, 'chat/group_converse.html', context)
 
@@ -353,14 +345,11 @@ def send_message_view(request, conversation_id):
     message.sender = request.user
     message.save()
 
-    # Engagement + badge check for the sender
     eng, _ = UserEngagement.objects.get_or_create(user=request.user)
     eng.messages_sent += 1
     eng.save()
     check_and_award_badges(request.user)
 
-    # Pre-compute translations for whichever recipient(s) have
-    # auto-translate on, so it's ready the moment they open the chat
     if conversation.type == 'direct' and access['other_user']:
         other_profile = getattr(access['other_user'], 'profile', None)
         if other_profile and other_profile.auto_translate:
@@ -391,13 +380,6 @@ def send_message_view(request, conversation_id):
     })
 
 
-# =====================================================================
-# POLLING (inside a conversation) — works for both direct and group.
-# Checks "anything new since message <since>?" AND reports whether the
-# conversation is still active for THIS user (direct: connection active;
-# group: hasn't left) — lets an open chatbox react live to the other
-# side ending the chat, or to the user having left a group in another tab.
-# =====================================================================
 @login_required
 def poll_messages_view(request, conversation_id):
     conversation = get_object_or_404(Conversation, id=conversation_id)
@@ -417,7 +399,6 @@ def poll_messages_view(request, conversation_id):
         .order_by('sent_at')
     )
 
-    # Mark any freshly-fetched messages from other people as read
     new_messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
 
     viewer_profile = getattr(request.user, 'profile', None)
@@ -439,6 +420,7 @@ def poll_messages_view(request, conversation_id):
             'is_mine': msg.sender_id == request.user.id,
             'translated_text': translated_text,
             'sender_name': sender_profile.display_name if sender_profile and sender_profile.display_name else msg.sender.username,
+            'sender_country_code': country_code_for(sender_profile.country if sender_profile else None),
         })
 
     return JsonResponse({
@@ -451,7 +433,6 @@ def poll_messages_view(request, conversation_id):
 @login_required
 @require_POST
 def translate_message_view(request, conversation_id, message_id):
-    """Manual translate-button endpoint — only used when auto-translate is off. Works for either conversation type."""
     conversation = get_object_or_404(Conversation, id=conversation_id)
     message = get_object_or_404(conversation.messages, id=message_id)
 
@@ -485,8 +466,6 @@ def end_chat_view(request, conversation_id):
         connection.ended_at = timezone.now()
         connection.save()
 
-    # Posts/comments stay mutually visible — nothing else to do here.
-    # (Only Block cascades further; see matching/views.py block_user_view.)
     return JsonResponse({'ok': True})
 
 
@@ -508,8 +487,4 @@ def leave_group_view(request, conversation_id):
     membership.left_at = timezone.now()
     membership.save()
 
-    # No cascade needed beyond this — _build_inbox_items() already only
-    # includes groups where left_at IS NULL, so this drops out of the
-    # inbox automatically. GroupMember.left_at doubles as your history
-    # (per Phase 0's soft-delete pattern), so nothing is deleted.
     return JsonResponse({'ok': True})
