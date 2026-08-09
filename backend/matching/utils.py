@@ -131,8 +131,14 @@ def get_open_group_for(user, group_max_members, min_overlap_ratio=0.4):
     """
     from .models import GroupMember, StudentGroup
 
+    # Excludes every group this user has EVER been part of — active OR
+    # left. (Previously this only excluded active memberships via
+    # left_at__isnull=True, which meant leaving a group and rejoining
+    # could put you right back in the SAME group — contradicting the
+    # "you won't be grouped with these students again" promise in the
+    # Leave Group modal.)
     already_in_ids = set(
-        GroupMember.objects.filter(user=user, left_at__isnull=True).values_list("group_id", flat=True)
+        GroupMember.objects.filter(user=user).values_list("group_id", flat=True)
     )
 
     user_profile = getattr(user, "profile", None)
