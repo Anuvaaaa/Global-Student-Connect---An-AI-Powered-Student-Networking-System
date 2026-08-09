@@ -211,6 +211,10 @@
   <div class="result-overlay" id="waitingOverlay">
     <div class="result-card waiting-card">
 
+      <button type="button" class="overlay-close-btn" onclick="dismissWaiting()" aria-label="Close">
+        <i class="ph-bold ph-x"></i>
+      </button>
+
       <div class="waiting-header">
         <div class="waiting-title">Match Request Sent! 🎯</div>
         <div class="waiting-subtitle">Waiting for response...</div>
@@ -294,6 +298,10 @@
   <div class="result-overlay" id="groupWaitingOverlay">
     <div class="result-card waiting-card">
 
+      <button type="button" class="overlay-close-btn" onclick="dismissGroupWaiting()" aria-label="Close">
+        <i class="ph-bold ph-x"></i>
+      </button>
+
       <div class="waiting-header">
         <div class="waiting-title">You're in the queue! 👥</div>
         <div class="waiting-subtitle">Waiting for other students to join...</div>
@@ -356,6 +364,10 @@
   ===================================================================== -->
   <div class="result-overlay" id="declineOverlay">
     <div class="result-card decline-card">
+
+      <button type="button" class="overlay-close-btn" onclick="document.getElementById('declineOverlay').style.display='none';" aria-label="Close">
+        <i class="ph-bold ph-x"></i>
+      </button>
 
       <div class="decline-emoji">😔</div>
       <div class="decline-title">No Match Found</div>
