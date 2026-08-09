@@ -15,7 +15,7 @@
     </a>
 
     <div class="chat-person" onclick="openProfileModal()" role="button" tabindex="0">
-      <div class="chat-person-flag">🌍</div>
+      <div class="chat-person-flag">{{ other_country_code }}</div>
       <div class="chat-person-info">
         <div class="chat-person-name">{{ other_name }}</div>
         <div class="chat-person-status">
@@ -55,17 +55,15 @@
 
 {% block content %}
 <!-- All messages — server-rendered ones AND anything appended later by
-       JS (sent or polled-in) — live as DIRECT children of this element.
-       That matters: .message-wrap.sent/.received rely on align-self,
-       which only works on direct children of a flex container. Never
-       nest messages inside another wrapper div here again. -->
+       JS (sent or polled-in) — live as DIRECT children of this element. -->
   <div class="messages-area {% if not auto_translate_on %}no-banner{% endif %}" id="messagesArea">
 
-    <div class="date-separator"><span>Today</span></div>
-
     {% for msg in messages %}
+      {% if msg.show_separator %}
+        <div class="date-separator"><span>{{ msg.date_label }}</span></div>
+      {% endif %}
       <div class="message-wrap {% if msg.is_mine %}sent{% else %}received{% endif %}" data-message-id="{{ msg.id }}">
-        {% if not msg.is_mine %}<div class="msg-avatar">🌍</div>{% endif %}
+        {% if not msg.is_mine %}<div class="msg-avatar">{{ other_country_code }}</div>{% endif %}
         <div class="message-bubble {% if msg.is_mine %}sent-bubble{% else %}received-bubble{% endif %}">
           <div class="msg-text">{{ msg.text }}</div>
 
@@ -91,7 +89,7 @@
   </div>
 {% endblock %}
 
-{% block input_placeholder %}{% if not connection_active %}This conversation has ended{% else %}Type a message...{% endif %}{% endblock %}
+{% block input_placeholder %}Type a message...{% endblock %}
 
 {% block modals %}
 <div class="modal-overlay" id="profileModal">
@@ -105,7 +103,7 @@
       </div>
 
       <div class="profile-modal-top">
-        <div class="profile-modal-flag">🌍</div>
+        <div class="profile-modal-flag">{{ other_country_code }}</div>
         <div class="profile-modal-name">{{ other_name }}</div>
         <div class="profile-modal-sub">{{ other_university }} · {{ other_country }}</div>
       </div>
@@ -286,13 +284,19 @@
     const blockUrl     = "{% url 'matching:block_user' other_user.id %}";
     const inboxUrl     = "{% url 'chat:inbox' %}";
     const autoTranslateOn = {{ auto_translate_on|yesno:"true,false" }};
+    const otherCountryCode = "{{ other_country_code|escapejs }}";
 
     let lastMessageId = {{ last_message_id }};
     let connectionActive = {{ connection_active|yesno:"true,false" }};
 
+    {% if last_date_label %}
+      let lastDateLabel = "{{ last_date_label|escapejs }}";
+    {% else %}
+      let lastDateLabel = null;
+    {% endif %}
+
     // -------------------------------------------------------
-    // CSRF — Django reads this from the csrftoken cookie,
-    // set automatically by @ensure_csrf_cookie on the view.
+    // CSRF
     // -------------------------------------------------------
     function getCookie(name) {
       let value = null;
@@ -308,8 +312,6 @@
 
     // -------------------------------------------------------
     // AUTO TRANSLATE BANNER
-    // Driven by the viewer's real Profile.auto_translate,
-    // rendered server-side — no more localStorage.
     // -------------------------------------------------------
     const banner = document.getElementById('translateBanner');
     {% if auto_translate_on %}
@@ -321,10 +323,7 @@
     {% endif %}
 
     // -------------------------------------------------------
-    // CONVERSATION-ENDED STATE — disables the input bar, either
-    // immediately on page load (if it was already ended) or live
-    // via polling (if the other person ends it while you're still
-    // sitting in the chatbox).
+    // CONVERSATION-ENDED STATE
     // -------------------------------------------------------
     function disableInputForEndedChat(showToastMessage) {
       connectionActive = false;
@@ -339,16 +338,23 @@
     }
 
     if (!connectionActive) {
-      disableInputForEndedChat(null); // already ended before page load — no toast needed
+      disableInputForEndedChat(null);
     }
 
     // -------------------------------------------------------
-    // BUILD A MESSAGE ELEMENT — used for BOTH a message you just sent
-    // AND a message that arrives via polling. Always appended directly
-    // to #messagesArea (the real flex container), never into a nested
-    // wrapper div — that mismatch was what broke alignment before.
+    // BUILD A MESSAGE ELEMENT
     // -------------------------------------------------------
     function appendMessage(m) {
+      if (lastDateLabel !== 'Today') {
+        const sep = document.createElement('div');
+        sep.className = 'date-separator';
+        const span = document.createElement('span');
+        span.textContent = 'Today';
+        sep.appendChild(span);
+        document.getElementById('messagesArea').appendChild(sep);
+        lastDateLabel = 'Today';
+      }
+
       const wrap = document.createElement('div');
       wrap.className = 'message-wrap ' + (m.is_mine ? 'sent' : 'received');
       wrap.dataset.messageId = m.id;
@@ -356,7 +362,7 @@
       if (!m.is_mine) {
         const avatar = document.createElement('div');
         avatar.className = 'msg-avatar';
-        avatar.textContent = '🌍';
+        avatar.textContent = otherCountryCode;
         wrap.appendChild(avatar);
       }
 
@@ -365,7 +371,7 @@
 
       const msgText = document.createElement('div');
       msgText.className = 'msg-text';
-      msgText.textContent = m.text; // textContent — safe from XSS
+      msgText.textContent = m.text;
       bubble.appendChild(msgText);
 
       if (!m.is_mine) {
@@ -406,8 +412,7 @@
     }
 
     // -------------------------------------------------------
-    // SEND MESSAGE — real AJAX call, appends the confirmed
-    // message returned by the server (not an optimistic guess)
+    // SEND MESSAGE
     // -------------------------------------------------------
     function sendMessage() {
       if (!connectionActive) {
@@ -441,7 +446,7 @@
             is_mine: true,
             translated_text: null,
           });
-          lastMessageId = data.message.id; // so polling never re-fetches our own message
+          lastMessageId = data.message.id;
           input.value = '';
           scrollToBottom();
         })
@@ -451,10 +456,7 @@
     window.addEventListener('load', scrollToBottom);
 
     // -------------------------------------------------------
-    // POLLING — every 3s, ask the server for anything new since
-    // lastMessageId, AND whether the connection is still active.
-    // Catches both new messages AND the other person ending the chat
-    // while this page is still open.
+    // POLLING
     // -------------------------------------------------------
     let isPolling = false;
 
@@ -479,14 +481,14 @@
             disableInputForEndedChat('The other person ended this conversation.');
           }
         })
-        .catch(() => { /* silent — will just retry in 3s */ })
+        .catch(() => {})
         .finally(() => { isPolling = false; });
     }
 
     setInterval(pollForNewMessages, 3000);
 
     // -------------------------------------------------------
-    // TRANSLATE — manual button, only shown when auto-translate is off
+    // TRANSLATE
     // -------------------------------------------------------
     function translateMessage(btn, messageId) {
       const url = `/chat/${conversationId}/message/${messageId}/translate/`;
@@ -509,14 +511,12 @@
     }
 
     // -------------------------------------------------------
-    // PROFILE MODAL — real data already rendered server-side,
-    // this just shows it
+    // PROFILE MODAL
     // -------------------------------------------------------
     function openProfileModal() {
       document.getElementById('profileModal').style.display = 'flex';
     }
 
-    // Close menu when clicking outside
     document.addEventListener('click', (e) => {
       const menu    = document.getElementById('dropdownMenu');
       const moreBtn = document.querySelector('.more-btn');
@@ -526,7 +526,7 @@
     });
 
     // -------------------------------------------------------
-    // END CHAT — real AJAX call, ends the Connection server-side
+    // END CHAT
     // -------------------------------------------------------
     function endChat() {
       document.getElementById('dropdownMenu').classList.remove('open');
@@ -551,7 +551,7 @@
     }
 
     // -------------------------------------------------------
-    // REPORT USER — real AJAX call, creates a Report row
+    // REPORT USER
     // -------------------------------------------------------
     function reportUser() {
       document.getElementById('dropdownMenu').classList.remove('open');
@@ -583,8 +583,7 @@
     }
 
     // -------------------------------------------------------
-    // BLOCK USER — real AJAX call to matching:block_user
-    // (the cascade — Block row + ends the Connection)
+    // BLOCK USER
     // -------------------------------------------------------
     function blockUser() {
       document.getElementById('dropdownMenu').classList.remove('open');
@@ -608,7 +607,6 @@
         });
     }
 
-    // Click overlay to close
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', function(e) {
         if (e.target === this) closeModal(this.id);
