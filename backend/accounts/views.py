@@ -2,10 +2,12 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from engagement.utils import get_badge_progress, get_mission_progress
+from matching.utils import cleanup_matching_state_for_deleted_user
 from social.models import Interest, UserInterest
 
 from .forms import ProfileSetupForm
@@ -90,10 +92,20 @@ def profile_setup_view(request):
         current_interest_ids = UserInterest.objects.filter(
             user=request.user
         ).values_list('interest_id', flat=True)
-        form = ProfileSetupForm(
-            instance=profile,
-            initial={'interests': Interest.objects.filter(id__in=current_interest_ids)},
-        )
+
+        initial_data = {'interests': Interest.objects.filter(id__in=current_interest_ids)}
+
+        # gender is a required model field with no blank/null state — the
+        # get_or_create default above has to put a placeholder ('Male')
+        # in the row for a first-time user, purely to satisfy the
+        # database. Without this override, that placeholder would show
+        # as pre-selected before the user ever actually chose anything.
+        # Only show the real saved gender when genuinely editing an
+        # already-completed profile.
+        if not profile.profile_setup_complete:
+            initial_data['gender'] = ''
+
+        form = ProfileSetupForm(instance=profile, initial=initial_data)
 
     return render(request, 'accounts/profile-setup.html', {
         'form': form,
@@ -138,7 +150,7 @@ def update_display_name_view(request):
     if name:
         request.user.profile.display_name = name
         request.user.profile.save(update_fields=['display_name'])
-    return redirect('accounts:profile')
+    return redirect(reverse('accounts:profile') + '#accountSettingsCard')
 
 
 @login_required
@@ -149,7 +161,7 @@ def toggle_auto_translate_view(request):
     if profile.auto_translate and not profile.translate_into:
         profile.translate_into = profile.primary_language
     profile.save(update_fields=['auto_translate', 'translate_into'])
-    return redirect('accounts:profile')
+    return redirect(reverse('accounts:profile') + '#accountSettingsCard')
 
 
 @login_required
@@ -162,7 +174,7 @@ def update_translate_into_view(request):
     if choice in (profile.primary_language, profile.secondary_language):
         profile.translate_into = choice
         profile.save(update_fields=['translate_into'])
-    return redirect('accounts:profile')
+    return redirect(reverse('accounts:profile') + '#accountSettingsCard')
 
 
 @login_required
@@ -176,5 +188,14 @@ def delete_account_view(request):
     user.deleted_at = timezone.now()
     user.is_active = False
     user.save(update_fields=['is_deleted', 'deleted_at', 'is_active'])
+
+    # Cross-app cleanup so a deleted account doesn't leave live traps for
+    # other, still-active students: releases any group seat they were
+    # occupying (so it's not stuck "full" forever), and cancels any
+    # pending MatchRequest involving them (so nobody can still Accept a
+    # request from/to an account that no longer exists). See
+    # matching/utils.py for both underlying functions.
+    cleanup_matching_state_for_deleted_user(user)
+
     logout(request)
     return redirect('accounts:login')
