@@ -7,6 +7,7 @@ stats. Keep this file dependency-light — it's imported across apps.
 """
 
 from django.db.models import Q
+from django.utils import timezone
 
 from .models import Block, MatchRequest, Connection
 from social.models import UserInterest
@@ -72,10 +73,6 @@ def get_available_matches(user):
     if profile is None:
         return User.objects.none()
 
-    # Everyone the user has EVER been connected to — active or ended.
-    # (Previously this only looked at status="active", which meant a
-    # person you Ended Chat with could get suggested again later. Team
-    # decision: once you've ended a chat with someone, don't re-match.)
     all_connection_pairs = set(
         Connection.objects.filter(Q(user_a=user) | Q(user_b=user))
         .values_list("user_a_id", "user_b_id")
@@ -86,7 +83,6 @@ def get_available_matches(user):
         connected_user_ids.add(b_id)
     connected_user_ids.discard(user.id)
 
-    # Everyone with a still-pending request between the two of you
     pending_ids = set(
         MatchRequest.objects.filter(
             Q(requester=user) | Q(recipient=user), status="pending"
@@ -120,23 +116,13 @@ def get_open_group_for(user, group_max_members, min_overlap_ratio=0.4):
     Finds a StudentGroup with room for this user AND that they're actually
     compatible with — same gender as every current member (matching the
     rule used for 1:1 matching), AND at least min_overlap_ratio of shared
-    interests with EVERY current member, not just some of them. Checking
-    against everyone (not an average) matters: without it, one shared
-    interest with one member could smuggle someone into an otherwise
-    unrelated group.
+    interests with EVERY current member, not just some of them.
 
     Prioritizes groups that are MORE full first (not emptier ones) among
-    the compatible candidates — this makes 2-person groups form fast
-    instead of scattering new joiners across many lonely 1-person groups.
+    the compatible candidates.
     """
     from .models import GroupMember, StudentGroup
 
-    # Excludes every group this user has EVER been part of — active OR
-    # left. (Previously this only excluded active memberships via
-    # left_at__isnull=True, which meant leaving a group and rejoining
-    # could put you right back in the SAME group — contradicting the
-    # "you won't be grouped with these students again" promise in the
-    # Leave Group modal.)
     already_in_ids = set(
         GroupMember.objects.filter(user=user).values_list("group_id", flat=True)
     )
@@ -149,7 +135,9 @@ def get_open_group_for(user, group_max_members, min_overlap_ratio=0.4):
     candidates = []
     for group in StudentGroup.objects.exclude(id__in=already_in_ids):
         members = list(
-            GroupMember.objects.filter(group=group, left_at__isnull=True).select_related("user__profile")
+            GroupMember.objects.filter(
+                group=group, left_at__isnull=True, user__is_deleted=False
+            ).select_related("user__profile")
         )
         member_count = len(members)
         if member_count == 0 or member_count >= group_max_members:
@@ -167,8 +155,6 @@ def get_open_group_for(user, group_max_members, min_overlap_ratio=0.4):
                 UserInterest.objects.filter(user=gm.user).values_list("interest_id", flat=True)
             )
             if not user_interest_ids or not member_interest_ids:
-                # No interests to compare — treat as incompatible rather
-                # than silently admitting them everywhere.
                 compatible_with_everyone = False
                 break
             overlap_ratio = len(user_interest_ids & member_interest_ids) / min(
@@ -201,3 +187,66 @@ def get_best_match(user):
     scored = [(c, compute_compatibility_score(user, c)) for c in candidates]
     scored.sort(key=lambda pair: pair[1], reverse=True)
     return scored[0]
+
+
+# =====================================================================
+# ACCOUNT DELETION — GROUP SLOT RELEASE
+#
+# Call this from accounts' delete-account view, immediately after
+# setting is_deleted=True on the User.
+#
+# Why this exists (and Connection doesn't need an equivalent): groups
+# have real capacity limits — get_open_group_for() checks
+# member_count >= group_max_members using left_at__isnull=True to
+# decide if a group has room, and gatekeeps new joiners against every
+# "active" member's profile/interests. A deleted user whose GroupMember
+# row stays active forever permanently occupies a real slot and keeps
+# influencing who's allowed to join — a functional problem for OTHER,
+# currently-active students, not just a display issue. 1:1 Connections
+# have no such capacity concept, so they're deliberately left untouched.
+#
+# Does NOT delete the GroupMember row (soft-delete pattern, same as
+# everything else in this project) — just marks it left, same as if
+# the user had used Leave Group themselves.
+# =====================================================================
+def release_group_slots_for_deleted_user(user):
+    from .models import GroupMember
+    GroupMember.objects.filter(user=user, left_at__isnull=True).update(left_at=timezone.now())
+
+
+# =====================================================================
+# ACCOUNT DELETION — PENDING MATCH REQUEST CLEANUP
+#
+# Same shape of problem as the group-slot release above, applied to
+# MatchRequest instead of GroupMember. A pending MatchRequest is a LIVE,
+# actionable state — unlike an already-resolved Connection (which has no
+# capacity concept and is fine to just anonymize on display), a pending
+# request sitting in someone else's inbox can still be clicked Accept on
+# at any time. If the requester or recipient has since deleted their
+# account, accepting it would create a real Connection + Conversation
+# with a nonexistent account, and fire a Notification at a deleted user
+# — not a display nicety, a live bug path for a currently-active person.
+#
+# Sets status='cancelled', matching the same status a normal "Cancel
+# Request" click produces — no new status value needed.
+# =====================================================================
+def cancel_pending_matches_for_deleted_user(user):
+    MatchRequest.objects.filter(
+        Q(requester=user) | Q(recipient=user), status="pending"
+    ).update(status="cancelled", resolved_at=timezone.now())
+
+
+# =====================================================================
+# SINGLE ENTRY POINT FOR accounts' DELETE-ACCOUNT VIEW
+# One import, one function call, right after is_deleted=True gets set:
+#
+#   from matching.utils import cleanup_matching_state_for_deleted_user
+#   cleanup_matching_state_for_deleted_user(user)
+#
+# Covers both the group-slot and pending-match-request problems above in
+# one call, so accounts doesn't need to know these are two separate
+# fixes under the hood.
+# =====================================================================
+def cleanup_matching_state_for_deleted_user(user):
+    release_group_slots_for_deleted_user(user)
+    cancel_pending_matches_for_deleted_user(user)

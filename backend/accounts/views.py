@@ -37,9 +37,10 @@ def login_view(request):
                 "community guidelines."
             )
         elif user.suspended_until and user.suspended_until > timezone.now():
+            local_time = timezone.localtime(user.suspended_until)
             block_message = (
                 "Your account is suspended until "
-                f"{user.suspended_until.strftime('%B %d, %Y at %H:%M')} "
+                f"{local_time.strftime('%B %d, %Y at %H:%M')} "
                 "for violating community guidelines."
             )
 

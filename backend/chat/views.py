@@ -18,6 +18,38 @@ from social.models import Interest, UserInterest
 
 
 # =====================================================================
+# IDENTITY DISPLAY — single source of truth for "what do we show for
+# this user's name/avatar/university/country". Handles is_deleted the
+# same way social/views.py already does (show "Deleted Student", not
+# the real identity) so every place chat displays a person goes through
+# this instead of duplicating the same is_deleted check four times.
+#
+# Note: computing initial from the ALREADY-anonymized name means a
+# deleted user's avatar naturally becomes "D" with no extra branching —
+# one code path handles both cases.
+# =====================================================================
+def _display_identity(user):
+    profile = getattr(user, 'profile', None)
+
+    if user.is_deleted:
+        name = 'Deleted Student'
+        country = None
+        university_name = None
+    else:
+        name = profile.display_name if profile and profile.display_name else user.username
+        country = profile.country if profile and profile.country else None
+        university_name = user.university.name if user.university else None
+
+    return {
+        'name': name,
+        'initial': name[0].upper() if name else '?',
+        'country': country or 'Unknown',
+        'country_code': country_code_for(country),
+        'university': university_name or 'Unknown University',
+    }
+
+
+# =====================================================================
 # INBOX — logic pulled into a helper so both the page load (inbox_view)
 # and the live-refresh endpoint (inbox_poll_view) build the exact same
 # data from the exact same rules. Keeps them from drifting apart.
@@ -46,29 +78,26 @@ def _build_inbox_items(user):
 
     for conv in direct_convos:
         other = conv.connection.user_b if conv.connection.user_a_id == user.id else conv.connection.user_a
-        other_profile = getattr(other, 'profile', None)
+        identity = _display_identity(other)
         last_msg = conv.messages.order_by('-sent_at').first()
         unread = conv.messages.filter(is_read=False).exclude(sender=user).count()
-
-        display_name = other_profile.display_name if other_profile and other_profile.display_name else other.username
 
         items.append({
             'type': 'friend',
             'conversation_id': conv.id,
-            'name': display_name,
-            'initial': display_name[0].upper(),
+            'name': identity['name'],
+            'initial': identity['initial'],
             'last_msg': last_msg.text if last_msg else 'Say hello 👋',
             'sent_at': last_msg.sent_at if last_msg else conv.created_at,
             'unread': unread,
         })
 
     for conv in group_convos:
-        last_msg = conv.messages.select_related('sender__profile').order_by('-sent_at').first()
+        last_msg = conv.messages.select_related('sender').order_by('-sent_at').first()
         unread = conv.messages.filter(is_read=False).exclude(sender=user).count()
 
         if last_msg:
-            sender_profile = getattr(last_msg.sender, 'profile', None)
-            sender_name = sender_profile.display_name if sender_profile else last_msg.sender.username
+            sender_name = _display_identity(last_msg.sender)['name']
             preview = f'{sender_name}: {last_msg.text}'
         else:
             preview = 'No messages yet'
@@ -191,8 +220,7 @@ def conversation_view(request, conversation_id):
 
     last_date_label = _attach_date_labels(message_list)
 
-    other_profile = getattr(other, 'profile', None)
-    other_country = other_profile.country if other_profile and other_profile.country else None
+    other_identity = _display_identity(other)
 
     my_interest_ids = set(UserInterest.objects.filter(user=request.user).values_list('interest_id', flat=True))
     other_interest_ids = set(UserInterest.objects.filter(user=other).values_list('interest_id', flat=True))
@@ -204,10 +232,10 @@ def conversation_view(request, conversation_id):
         'active_page': 'chat',
         'conversation': conversation,
         'other_user': other,
-        'other_name': other_profile.display_name if other_profile and other_profile.display_name else other.username,
-        'other_university': other.university.name if other.university else 'Unknown University',
-        'other_country': other_country or 'Unknown',
-        'other_country_code': country_code_for(other_country),
+        'other_name': other_identity['name'],
+        'other_university': other_identity['university'],
+        'other_country': other_identity['country'],
+        'other_country_code': other_identity['country_code'],
         'shared_interests': shared_interest_names,
         'compat_score': compute_compatibility_score(request.user, other),
         'messages': message_list,
@@ -240,7 +268,7 @@ def group_conversation_view(request, conversation_id):
     auto_translate_on = bool(viewer_profile and viewer_profile.auto_translate)
     target_language = (viewer_profile.translate_into if viewer_profile else None) or 'English'
 
-    messages_qs = conversation.messages.select_related('sender__profile').order_by('sent_at')
+    messages_qs = conversation.messages.select_related('sender').order_by('sent_at')
     message_list = []
     for msg in messages_qs:
         translated_text = None
@@ -248,15 +276,15 @@ def group_conversation_view(request, conversation_id):
             translation = translate_message(msg, target_language, for_user=request.user)
             translated_text = translation.translated_text if translation else None
 
-        sender_profile = getattr(msg.sender, 'profile', None)
+        sender_identity = _display_identity(msg.sender)
         message_list.append({
             'id': msg.id,
             'text': msg.text,
             'sent_at': msg.sent_at,
             'is_mine': msg.sender_id == request.user.id,
             'translated_text': translated_text,
-            'sender_name': sender_profile.display_name if sender_profile and sender_profile.display_name else msg.sender.username,
-            'sender_country_code': country_code_for(sender_profile.country if sender_profile else None),
+            'sender_name': sender_identity['name'],
+            'sender_country_code': sender_identity['country_code'],
         })
 
     last_date_label = _attach_date_labels(message_list)
@@ -269,6 +297,12 @@ def group_conversation_view(request, conversation_id):
     other_members = []
     all_interest_sets = []
     for gm in active_memberships:
+        # Interests stay real regardless of deletion status — only
+        # IDENTITY (name/avatar/university/country) gets anonymized.
+        # Keeping interests intact means "Shared Interests" still works
+        # correctly for everyone else still in the group; a deleted
+        # member's tastes aren't identifying on their own the way their
+        # name/school/country would be.
         member_interest_ids = set(
             UserInterest.objects.filter(user=gm.user).values_list('interest_id', flat=True)
         )
@@ -277,26 +311,26 @@ def group_conversation_view(request, conversation_id):
         if gm.user_id == request.user.id:
             continue
 
-        member_profile = getattr(gm.user, 'profile', None)
+        identity = _display_identity(gm.user)
         member_interest_names = list(
             Interest.objects.filter(id__in=member_interest_ids).values_list('name', flat=True)
         )
-        languages = ' · '.join(filter(None, [
-            member_profile.primary_language if member_profile else None,
-            member_profile.secondary_language if member_profile else None,
-        ])) or 'Not specified'
-
-        display_name = member_profile.display_name if member_profile and member_profile.display_name else gm.user.username
-        member_country = member_profile.country if member_profile and member_profile.country else None
+        member_profile = getattr(gm.user, 'profile', None)
+        languages = 'Not specified' if gm.user.is_deleted else (
+            ' · '.join(filter(None, [
+                member_profile.primary_language if member_profile else None,
+                member_profile.secondary_language if member_profile else None,
+            ])) or 'Not specified'
+        )
 
         other_members.append({
             'user_id': gm.user.id,
-            'name': display_name,
-            'first_name': display_name.split(' ')[0],
-            'initial': display_name[0].upper(),
-            'university': gm.user.university.name if gm.user.university else 'Unknown University',
-            'country': member_country or 'Unknown',
-            'country_code': country_code_for(member_country),
+            'name': identity['name'],
+            'first_name': identity['name'].split(' ')[0],
+            'initial': identity['initial'],
+            'university': identity['university'],
+            'country': identity['country'],
+            'country_code': identity['country_code'],
             'languages': languages,
             'interests': member_interest_names,
         })
@@ -368,6 +402,10 @@ def send_message_view(request, conversation_id):
                 target = member_profile.translate_into or member_profile.primary_language or 'English'
                 translate_message(message, target, for_user=gm.user)
 
+    # The sender here is always the currently logged-in user, who by
+    # definition can't be a deleted account (deleted users are logged
+    # out and can't authenticate) — no anonymization needed for this
+    # response specifically.
     sender_profile = getattr(request.user, 'profile', None)
     return JsonResponse({
         'ok': True,
@@ -394,7 +432,7 @@ def poll_messages_view(request, conversation_id):
         since_id = 0
 
     new_messages = (
-        conversation.messages.select_related('sender__profile')
+        conversation.messages.select_related('sender')
         .filter(id__gt=since_id)
         .order_by('sent_at')
     )
@@ -412,15 +450,15 @@ def poll_messages_view(request, conversation_id):
             translation = translate_message(msg, target_language, for_user=request.user)
             translated_text = translation.translated_text if translation else None
 
-        sender_profile = getattr(msg.sender, 'profile', None)
+        sender_identity = _display_identity(msg.sender)
         payload.append({
             'id': msg.id,
             'text': msg.text,
             'sent_at': msg.sent_at.strftime('%H:%M'),
             'is_mine': msg.sender_id == request.user.id,
             'translated_text': translated_text,
-            'sender_name': sender_profile.display_name if sender_profile and sender_profile.display_name else msg.sender.username,
-            'sender_country_code': country_code_for(sender_profile.country if sender_profile else None),
+            'sender_name': sender_identity['name'],
+            'sender_country_code': sender_identity['country_code'],
         })
 
     return JsonResponse({

@@ -188,7 +188,7 @@ def feed_view(request):
     # Attach each post's visible (non-blocked) comments, oldest first,
     # matching the prototype's comment thread order.
     for post in posts_list:
-        comments = post.comments.select_related('user').order_by('created_at')
+        comments = post.comments.select_related('user', 'user__profile').order_by('created_at')
         post.visible_comments = [
             c for c in comments if not is_blocked_either_way(request.user, c.user)
         ]

@@ -52,10 +52,7 @@
 }
 
 .stat-card  { flex: 1; text-align: center; }
-.stat-number {
-  font-size: 26px; font-weight: 800; color: #1e1560; margin-bottom: 4px;
-  min-height: 32px; display: flex; align-items: center; justify-content: center;
-}
+.stat-number { font-size: 26px; font-weight: 800; color: #1e1560; margin-bottom: 4px; }
 .stat-text   { font-size: 18px; }
 .stat-label  { font-size: 11px; color: #aaa; font-weight: 500; }
 
@@ -233,7 +230,28 @@
   width: 100%; max-width: 400px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.2);
   animation: slideUp 0.3s ease;
+  position: relative;
 }
+
+.overlay-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #bbb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.overlay-close-btn:hover { color: #1e1560; background: #f8f7ff; }
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px); }
@@ -544,7 +562,7 @@
 
   .action-cards { flex-direction: column; }
 
-  .how-steps { flex-direction: column; align-items: stretch; gap: 16px; }
+  .how-steps { flex-direction: column; gap: 16px; }
   .how-arrow { display: none; }
 
   .stats-row { padding: 16px; }
