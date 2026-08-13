@@ -26,9 +26,29 @@ def login_view(request):
         return redirect('social:home')
 
     form = AuthenticationForm(request, data=request.POST or None)
+    block_message = None
 
     if request.method == 'POST' and form.is_valid():
         user = form.get_user()
+
+        if user.is_banned:
+            block_message = (
+                "Your account has been permanently banned for violating "
+                "community guidelines."
+            )
+        elif user.suspended_until and user.suspended_until > timezone.now():
+            block_message = (
+                "Your account is suspended until "
+                f"{user.suspended_until.strftime('%B %d, %Y at %H:%M')} "
+                "for violating community guidelines."
+            )
+
+        if block_message:
+            return render(request, 'accounts/index.html', {
+                'form': form,
+                'block_message': block_message,
+            })
+
         login(request, user)
 
         profile = getattr(user, 'profile', None)
@@ -36,7 +56,7 @@ def login_view(request):
             return redirect('accounts:profile_setup')
         return redirect('social:home')
 
-    return render(request, 'accounts/index.html', {'form': form})
+    return render(request, 'accounts/index.html', {'form': form, 'block_message': block_message})
 
 
 @login_required

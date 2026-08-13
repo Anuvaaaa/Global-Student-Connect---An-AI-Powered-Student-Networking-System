@@ -18,6 +18,7 @@ class User(AbstractUser):
     )
     is_verified = models.BooleanField(default=False)
     suspended_until = models.DateTimeField(null=True, blank=True)
+    is_banned = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
