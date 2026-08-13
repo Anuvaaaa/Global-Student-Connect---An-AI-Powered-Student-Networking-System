@@ -97,6 +97,13 @@
           🎓 Verified Students Only
         </div>
 
+        <!-- Suspended / banned account message -->
+        {% if block_message %}
+          <div class="login-error">
+            <p>{{ block_message }}</p>
+          </div>
+        {% endif %}
+
         <!-- Non-field errors (e.g. "wrong username or password") -->
         {% if form.non_field_errors %}
           <div class="login-error">
