@@ -425,12 +425,52 @@
 
 
     // -------------------------------------------------------
+    // LANGUAGE CROSS-DISABLE — primary and secondary language
+    // can't be the same. Whichever one is picked in one dropdown
+    // gets disabled (greyed out) as an option in the other, live,
+    // and works in both directions. Server-side validation in
+    // ProfileSetupForm.clean() is the real backstop — this is
+    // just the live UX so a user never even sees the invalid
+    // combination as selectable in the first place.
+    // -------------------------------------------------------
+    function syncLanguageOptions() {
+      const primarySelect = document.getElementById('id_primary_language');
+      const secondarySelect = document.getElementById('id_secondary_language');
+      if (!primarySelect || !secondarySelect) return;
+
+      function updateOptions(sourceSelect, targetSelect) {
+        const selectedValue = sourceSelect.value;
+        Array.from(targetSelect.options).forEach(opt => {
+          if (opt.value === '') return; // leave the placeholder alone
+          opt.disabled = (selectedValue !== '' && opt.value === selectedValue);
+        });
+        // If the target's current value just became the disabled one
+        // (e.g. re-selecting the same language it already had),
+        // reset it back to the placeholder so nothing invalid lingers
+        if (selectedValue !== '' && targetSelect.value === selectedValue) {
+          targetSelect.value = '';
+        }
+      }
+
+      primarySelect.addEventListener('change', () => updateOptions(primarySelect, secondarySelect));
+      secondarySelect.addEventListener('change', () => updateOptions(secondarySelect, primarySelect));
+
+      // Apply immediately on page load too — matters when re-visiting
+      // this page with already-saved values (editing), or after a
+      // failed submit that re-renders with prior input intact
+      updateOptions(primarySelect, secondarySelect);
+      updateOptions(secondarySelect, primarySelect);
+    }
+
+
+    // -------------------------------------------------------
     // ON LOAD — sync visual state to whatever Django rendered
     // (matters after a failed submit, or revisiting this page
     // with an already-partially-filled Profile)
     // -------------------------------------------------------
     window.addEventListener('DOMContentLoaded', () => {
       syncTranslateVisual();
+      syncLanguageOptions();
       refreshInterestUI();
 
       {% if form.errors %}

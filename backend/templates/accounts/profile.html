@@ -270,7 +270,7 @@
            small view and redirects back here. No AJAX — plain POST +
            redirect, consistent with every other action in this app.
       ------------------------------------------------------------------- -->
-      <div class="section-card settings-card">
+      <div class="section-card settings-card" id="accountSettingsCard">
 
         <div class="section-header settings-header" onclick="toggleSettings()">
           <div class="section-title">
@@ -464,6 +464,26 @@
         body.style.display = 'none';
         caret.style.transform = 'rotate(0deg)';
       }
+    }
+
+
+    // -------------------------------------------------------
+    // RETURN-TO-SETTINGS AFTER SAVE
+    // Every settings action (name save, auto-translate toggle,
+    // translate-into choice) does a real POST + redirect — no AJAX,
+    // so the page always shows genuinely fresh database state. The
+    // trade-off was landing back at the very top of the page every
+    // time, forcing a re-scroll + re-open of the accordion to see
+    // the result. Each settings view now redirects to
+    // /profile/#accountSettingsCard instead of a bare /profile/ —
+    // this detects that anchor on load, opens the accordion
+    // automatically, and scrolls straight to it.
+    // -------------------------------------------------------
+    if (window.location.hash === '#accountSettingsCard') {
+      settingsOpen = true;
+      document.getElementById('settingsBody').style.display = 'block';
+      document.getElementById('settingsCaret').style.transform = 'rotate(180deg)';
+      document.getElementById('accountSettingsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
 
