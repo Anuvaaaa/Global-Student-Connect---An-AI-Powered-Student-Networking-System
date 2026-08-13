@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
 
-
 {% block title_suffix %} — Home{% endblock %}
 
 {% block extra_css %}
@@ -45,7 +44,9 @@
       {% for post in posts %}
       <div class="moment-card" id="card-{{ post.id }}">
         <div class="moment-avatar av-user">
-          {% if post.user_id == request.user.id %}
+          {% if post.user.is_deleted %}
+            <i class="ph-bold ph-user-circle-minus"></i>
+          {% elif post.user_id == request.user.id %}
             <i class="ph-bold ph-user"></i>
           {% else %}
             {{ post.user.profile.display_name|default:post.user.username|first|upper }}
@@ -54,7 +55,7 @@
         <div class="moment-body">
           <div style="display: flex; align-items: flex-start; justify-content: space-between;">
             <div class="moment-name">
-              {% if post.user_id == request.user.id %}You{% else %}{{ post.user.profile.display_name|default:post.user.username }}{% endif %}
+              {% if post.user.is_deleted %}Deleted Student{% elif post.user_id == request.user.id %}You{% else %}{{ post.user.profile.display_name|default:post.user.username }}{% endif %}
             </div>
             {% if post.user_id == request.user.id %}
             <form method="post" action="{% url 'social:delete_post' post.id %}" onsubmit="return confirm('Delete this post? This also removes its likes and comments.');" data-preserve-scroll>
@@ -67,7 +68,7 @@
             {% endif %}
           </div>
           <div class="moment-uni">
-            {{ post.user.university.name|default:'' }}{% if post.user.university and post.user.profile.country %} · {% endif %}{{ post.user.profile.country|default:'' }}
+            {% if not post.user.is_deleted %}{{ post.user.university.name|default:'' }}{% if post.user.university and post.user.profile.country %} · {% endif %}{{ post.user.profile.country|default:'' }}{% endif %}
           </div>
           <div class="moment-text">{{ post.text }}</div>
           <div class="moment-meta">{{ post.created_at|timesince }} ago</div>
@@ -95,11 +96,11 @@
             {% for comment in post.visible_comments %}
             <div class="comment-item">
               <span class="comment-avatar">
-                {{ comment.user.profile.display_name|default:comment.user.username|first|upper }}
+                {% if comment.user.is_deleted %}<i class="ph-bold ph-user-circle-minus"></i>{% else %}{{ comment.user.profile.display_name|default:comment.user.username|first|upper }}{% endif %}
               </span>
               <div class="comment-body">
                 <span class="comment-name">
-                  {% if comment.user_id == request.user.id %}You{% else %}{{ comment.user.profile.display_name|default:comment.user.username }}{% endif %}
+                  {% if comment.user.is_deleted %}Deleted Student{% elif comment.user_id == request.user.id %}You{% else %}{{ comment.user.profile.display_name|default:comment.user.username }}{% endif %}
                 </span>
                 <span class="comment-text">{{ comment.text }}</span>
               </div>
@@ -242,15 +243,27 @@
   // -------------------------------------------------------
   // HIGHLIGHT LINKED POST
   // Triggered when arriving via a notification's "View" link
-  // (cta_href points at #card-<id>). Never fires for this page's
-  // own like/comment/delete redirects — those never set a #card
-  // hash, they use the scroll-restore above instead.
+  // (cta_href points at #card-<id>, optionally with ?highlight=<id>).
+  // Never fires for this page's own like/comment/delete redirects —
+  // those never set a #card hash, they use the scroll-restore above
+  // instead.
   //
   // Checks document.readyState first rather than only listening for
   // 'load' — this script sits near the bottom of the page, so if
   // resources were already cached, 'load' can fire before this line
   // even runs, meaning a listener registered here would silently
   // never catch it.
+  //
+  // IMPORTANT: after firing, this strips the #card- hash and any
+  // ?highlight= param from the address bar via history.replaceState().
+  // Without that, the trigger condition ("URL has a #card- hash")
+  // stays true forever — so a plain refresh of the SAME URL would
+  // re-run the animation every time, since nothing else ever tells
+  // the page "this already played once." replaceState() rewrites the
+  // URL in place with no reload and no new browser-history entry, so
+  // a refresh afterward loads a clean URL with nothing left to
+  // trigger on. ?page= is deliberately kept — that still needs to
+  // persist so a refresh keeps showing the same depth of loaded posts.
   // -------------------------------------------------------
   function highlightLinkedPost() {
     if (window.location.hash && window.location.hash.startsWith('#card-')) {
@@ -259,6 +272,11 @@
         target.classList.add('highlight-flash');
         setTimeout(() => target.classList.remove('highlight-flash'), 2500);
       }
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('highlight');
+      cleanUrl.hash = '';
+      history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search);
     }
   }
 
