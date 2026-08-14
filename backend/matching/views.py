@@ -318,8 +318,24 @@ def decline_match_view(request, request_id):
 # groups first), and THAT is the moment the group becomes real: a
 # Conversation gets created and everyone already in it gets credited.
 # =====================================================================
+def _active_group_members(group):
+    """
+    The one place this filter is defined. Every function below that
+    counts or lists a group's members should call this instead of
+    writing GroupMember.objects.filter(...) directly — that's exactly
+    how this bug happened: get_open_group_for() in utils.py had the
+    user__is_deleted=False filter, but views.py had five separate copies
+    of a near-identical query that didn't, so a deleted member's stale
+    GroupMember row (left_at still null, since accounts hasn't called
+    cleanup_matching_state_for_deleted_user yet) kept getting counted
+    and displayed here even though matching had already learned to
+    ignore them everywhere else.
+    """
+    return GroupMember.objects.filter(group=group, left_at__isnull=True, user__is_deleted=False)
+
+
 def _serialize_group_members(group):
-    members = GroupMember.objects.filter(group=group, left_at__isnull=True).select_related("user__profile")
+    members = _active_group_members(group).select_related("user__profile")
     return [{"name": m.user.profile.display_name, "country": m.user.profile.country} for m in members]
 
 
@@ -341,9 +357,7 @@ GROUP_NAME_SUFFIXES = ["Crew", "Circle", "Collective", "Squad", "Hub", "Corner"]
 
 
 def generate_group_name(group):
-    member_user_ids = list(
-        GroupMember.objects.filter(group=group, left_at__isnull=True).values_list("user_id", flat=True)
-    )
+    member_user_ids = list(_active_group_members(group).values_list("user_id", flat=True))
     if not member_user_ids:
         return "New Discussion Group"
 
@@ -379,7 +393,7 @@ def join_group_view(request):
         created_new_group = True
 
     membership = GroupMember.objects.create(group=group, user=user)
-    member_count = GroupMember.objects.filter(group=group, left_at__isnull=True).count()
+    member_count = _active_group_members(group).count()
 
     if member_count < 2:
         # Still just this one person — not a real group yet. No
@@ -394,7 +408,7 @@ def join_group_view(request):
         })
 
     conversation, _ = Conversation.objects.get_or_create(group=group, defaults={"type": "group"})
-    other_members = GroupMember.objects.filter(group=group, left_at__isnull=True).exclude(user=user)
+    other_members = _active_group_members(group).exclude(user=user)
 
     if member_count == 2:
         # This is the moment the group becomes real — replace the
@@ -406,7 +420,7 @@ def join_group_view(request):
         # Credit EVERYONE in it, including whoever was waiting alone
         # before this call, and notify them the same way a match
         # recipient gets notified.
-        for gm in GroupMember.objects.filter(group=group, left_at__isnull=True):
+        for gm in _active_group_members(group):
             _credit_group_membership(gm.user)
         for gm in other_members:
             Notification.objects.create(
@@ -470,7 +484,7 @@ def group_status_view(request, group_id):
     if membership is None:
         return JsonResponse({"error": "not a member of this group"}, status=403)
 
-    member_count = GroupMember.objects.filter(group=group, left_at__isnull=True).count()
+    member_count = _active_group_members(group).count()
     if member_count < 2:
         return JsonResponse({"formed": False, "joined_at": membership.joined_at.isoformat()})
 
@@ -493,7 +507,8 @@ def cancel_group_wait_view(request, group_id):
     that's a real "Leave Group" (built alongside the chat app), not a
     cancelled wait.
     """
-    member_count = GroupMember.objects.filter(group_id=group_id, left_at__isnull=True).count()
+    group = get_object_or_404(StudentGroup, id=group_id)
+    member_count = _active_group_members(group).count()
     if member_count >= 2:
         return JsonResponse({"ok": False, "error": "Group already formed — use Leave Group instead."}, status=400)
 
@@ -520,7 +535,7 @@ def my_pending_state_view(request):
     waiting_group_id = None
     waiting_group_joined_at = None
     for gm in GroupMember.objects.filter(user=user, left_at__isnull=True).select_related("group"):
-        count = GroupMember.objects.filter(group=gm.group, left_at__isnull=True).count()
+        count = _active_group_members(gm.group).count()
         if count < 2:
             waiting_group_id = gm.group_id
             waiting_group_joined_at = gm.joined_at.isoformat()
