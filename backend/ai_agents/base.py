@@ -13,7 +13,7 @@ class AIAgent(ABC):
 
     # Override per agent: use the cheaper/faster model unless the task
     # needs more judgment (see per-agent notes in section 2).
-    model_name = "gemini-2.5-flash"
+    model_name = "gemini-flash-latest"
 
     @abstractmethod
     def build_prompt(self, payload: dict) -> str:
@@ -33,9 +33,12 @@ class AIAgent(ABC):
         parse_response(), never run() itself.
         """
         from ai_agents.client import GeminiClient
-        model = GeminiClient.get_instance().get_model(self.model_name)
+        client = GeminiClient.get_instance().get_client()
         prompt = self.build_prompt(payload)
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+        )
         return self.parse_response(response.text)
 
     @staticmethod
