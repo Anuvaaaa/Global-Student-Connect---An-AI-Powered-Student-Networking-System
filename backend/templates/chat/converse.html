@@ -439,6 +439,7 @@
             if (data.error === 'This conversation has ended') disableInputForEndedChat(null);
             return;
           }
+          if (data.safety_notice) showToast(data.safety_notice);
           appendMessage({
             id: data.message.id,
             text: data.message.text,

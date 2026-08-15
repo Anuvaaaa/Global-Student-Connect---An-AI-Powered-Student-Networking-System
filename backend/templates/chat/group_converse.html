@@ -522,6 +522,7 @@
             if (data.error === 'You have left this group') disableInputForEndedChat(null);
             return;
           }
+          if (data.safety_notice) showToast(data.safety_notice);
           appendMessage({
             id: data.message.id,
             text: data.message.text,
