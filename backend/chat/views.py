@@ -10,10 +10,12 @@ from django.views.decorators.http import require_POST
 from .forms import MessageForm
 from .models import Conversation
 from .utils import country_code_for, date_label_for, translate_message
+from ai_agents.services.safety_pipeline import check_message
 from engagement.models import UserEngagement
 from engagement.utils import check_and_award_badges
 from matching.models import GroupMember
 from matching.utils import compute_compatibility_score, is_blocked_either_way
+from ai_agents.models import SafetyFlag
 from social.models import Interest, UserInterest
 
 
@@ -374,10 +376,41 @@ def send_message_view(request, conversation_id):
     if not form.is_valid():
         return JsonResponse({'ok': False, 'error': 'Message is empty or too long'}, status=400)
 
+    safety_result = check_message(form.cleaned_data['text'])
+    if safety_result['action'] == 'auto_block':
+        # Rejected outright — never saved, never sent. Still logged as a
+        # SafetyFlag so this isn't a total black box: without this, a
+        # false positive (e.g. a joke misread as harassment) would leave
+        # zero trace anywhere for an admin to catch or reverse.
+        SafetyFlag.objects.create(
+            user=request.user,
+            message=None,
+            blocked_text=form.cleaned_data['text'],
+            severity=safety_result.get('severity', 'high'),
+            category=safety_result.get('category', 'other'),
+            ai_reasoning=safety_result.get('reasoning', ''),
+            status='open',
+        )
+        return JsonResponse({'ok': False, 'error': 'Message blocked.'}, status=400)
+
     message = form.save(commit=False)
     message.conversation = conversation
     message.sender = request.user
     message.save()
+
+    if safety_result['action'] == 'queue_human_review':
+        # Message still sends, but a SafetyFlag surfaces it on the
+        # moderation dashboard for a human to review. This is separate
+        # from Report — most flags never become one; report stays null
+        # unless this later corroborates an existing user-filed report.
+        SafetyFlag.objects.create(
+            user=request.user,
+            message=message,
+            severity=safety_result.get('severity', 'medium'),
+            category=safety_result.get('category', 'other'),
+            ai_reasoning=safety_result.get('reasoning', ''),
+            status='open',
+        )
 
     eng, _ = UserEngagement.objects.get_or_create(user=request.user)
     eng.messages_sent += 1
@@ -407,7 +440,7 @@ def send_message_view(request, conversation_id):
     # out and can't authenticate) — no anonymization needed for this
     # response specifically.
     sender_profile = getattr(request.user, 'profile', None)
-    return JsonResponse({
+    response_data = {
         'ok': True,
         'message': {
             'id': message.id,
@@ -415,7 +448,19 @@ def send_message_view(request, conversation_id):
             'sent_at': message.sent_at.strftime('%H:%M'),
             'sender_name': sender_profile.display_name if sender_profile and sender_profile.display_name else request.user.username,
         }
-    })
+    }
+    if safety_result.get('stage') == 'error_fallback':
+        # Gemini was unreachable (quota exhausted, outage, etc.) — the
+        # message still sent normally and skipped AI screening entirely.
+        # This notice is purely informational for the sender; it doesn't
+        # block or delay anything. Reuse the report button for anything
+        # that actually needs a human's attention while this is down.
+        response_data['safety_notice'] = (
+            "Heads up: our safety agent is taking a quick nap 😴 — messages are "
+            "sending normally, just without the AI check for now. If you get "
+            "something that isn't okay, use the report button."
+        )
+    return JsonResponse(response_data)
 
 
 @login_required
