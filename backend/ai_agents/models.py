@@ -27,8 +27,26 @@ class SafetyFlag(models.Model):
         ("dismissed", "Dismissed"),
     ]
 
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="safety_flags",
+        null=True, blank=True,
+        help_text="Who sent the flagged content. Set directly rather than "
+                   "relying on message.sender, since message is null for "
+                   "auto-blocked content — this keeps admin actions "
+                   "(suspend/ban) working the same way for both cases.",
+    )
     message = models.ForeignKey(
-        Message, on_delete=models.CASCADE, related_name="safety_flags"
+        Message, on_delete=models.CASCADE, related_name="safety_flags",
+        null=True, blank=True,
+        help_text="Null when this flag came from an auto-blocked message — "
+                   "that message was never saved, so there's nothing to link "
+                   "to. See blocked_text for what was actually sent.",
+    )
+    blocked_text = models.TextField(
+        null=True, blank=True,
+        help_text="Snapshot of the message text. Only set for auto-blocked "
+                   "messages (where message is null) — otherwise the "
+                   "flagged content is recoverable via the message FK.",
     )
     report = models.ForeignKey(
         Report, on_delete=models.SET_NULL, null=True, blank=True,
