@@ -9,7 +9,9 @@ class Report(models.Model):
         ('pending', 'pending'), ('reviewed', 'reviewed'),
         ('dismissed', 'dismissed'), ('action_taken', 'action_taken'),
     ]
-    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_filed')
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_filed'
+    )
     reported_user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_against'
     )
