@@ -1,11 +1,14 @@
 from datetime import timedelta
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from ai_agents.models import SafetyFlag
+from ai_agents.services.safety_pipeline import check_message
 from engagement.models import Notification, UserEngagement
 from engagement.utils import record_mission_progress
 from matching.utils import is_blocked_either_way
@@ -212,9 +215,49 @@ def create_post_view(request):
     if request.method == 'POST':
         form = PostForm(request.POST)
         if form.is_valid():
-            post = form.save(commit=False)
-            post.user = request.user
-            post.save()
+            text = form.cleaned_data['text']
+            result = check_message(text)
+
+            if result['action'] == 'auto_block':
+                # High-severity content is never saved. A SafetyFlag is
+                # still created for audit purposes — without this, a
+                # false positive (e.g. a joke misread as a real threat)
+                # would leave zero trace and be unrecoverable.
+                SafetyFlag.objects.create(
+                    user=request.user,
+                    blocked_text=text,
+                    severity=result['severity'],
+                    category=result['category'],
+                    ai_reasoning=result['reasoning'],
+                )
+                messages.error(
+                    request,
+                    "That post couldn't be published — it was flagged by our safety system."
+                )
+            else:
+                post = form.save(commit=False)
+                post.user = request.user
+                post.save()
+
+                if result['action'] == 'queue_human_review':
+                    SafetyFlag.objects.create(
+                        user=request.user,
+                        post=post,
+                        severity=result['severity'],
+                        category=result['category'],
+                        ai_reasoning=result['reasoning'],
+                    )
+                elif result.get('stage') == 'error_fallback':
+                    # No report-button reference here (unlike chat's version
+                    # of this message) — social has no way to report a post
+                    # or comment yet, only Report.context_conversation_id
+                    # exists, so pointing users at a report button here
+                    # would promise a feature that doesn't exist.
+                    messages.info(
+                        request,
+                        "Heads up: our safety agent is taking a quick nap 😴 — "
+                        "your post was published normally, just without the AI check for now."
+                    )
         # On invalid input we just fall through to the redirect — the
         # 200-char limit is also enforced client-side via maxlength, so a
         # server-side rejection here should only happen on a malformed
@@ -306,29 +349,67 @@ def add_comment_view(request, post_id):
     if request.method == 'POST':
         form = CommentForm(request.POST)
         if form.is_valid():
-            comment = form.save(commit=False)
-            comment.user = request.user
-            comment.post = post
-            comment.save()
+            text = form.cleaned_data['text']
+            result = check_message(text)
 
-            engagement, _ = UserEngagement.objects.get_or_create(user=request.user)
-            engagement.comments_made += 1
-            engagement.save(update_fields=['comments_made'])
-
-            is_own_post = (post.user_id == request.user.id)
-
-            if COMMENT_MISSION_KEY and not is_own_post:
-                record_mission_progress(request.user, COMMENT_MISSION_KEY)
-
-            if not is_own_post:
-                Notification.objects.create(
-                    user=post.user,
-                    type='message',
-                    title='New comment on your moment',
-                    description=f'{request.user.get_full_name() or request.user.username} commented on your post.',
-                    cta_label='View',
-                    cta_href=_notification_link_for_post(post),
+            if result['action'] == 'auto_block':
+                # High-severity content is never saved, and — unlike a
+                # blocked post — it also never earns engagement credit,
+                # mission progress, or a notification to the post's
+                # author, since none of that should fire for content
+                # that never actually reached the platform.
+                SafetyFlag.objects.create(
+                    user=request.user,
+                    blocked_text=text,
+                    severity=result['severity'],
+                    category=result['category'],
+                    ai_reasoning=result['reasoning'],
                 )
+                messages.error(
+                    request,
+                    "That comment couldn't be posted — it was flagged by our safety system."
+                )
+            else:
+                comment = form.save(commit=False)
+                comment.user = request.user
+                comment.post = post
+                comment.save()
+
+                if result['action'] == 'queue_human_review':
+                    SafetyFlag.objects.create(
+                        user=request.user,
+                        comment=comment,
+                        severity=result['severity'],
+                        category=result['category'],
+                        ai_reasoning=result['reasoning'],
+                    )
+                elif result.get('stage') == 'error_fallback':
+                    # Same as the post case above — no report-button
+                    # reference, since social has no reporting path yet.
+                    messages.info(
+                        request,
+                        "Heads up: our safety agent is taking a quick nap 😴 — "
+                        "your comment was posted normally, just without the AI check for now."
+                    )
+
+                engagement, _ = UserEngagement.objects.get_or_create(user=request.user)
+                engagement.comments_made += 1
+                engagement.save(update_fields=['comments_made'])
+
+                is_own_post = (post.user_id == request.user.id)
+
+                if COMMENT_MISSION_KEY and not is_own_post:
+                    record_mission_progress(request.user, COMMENT_MISSION_KEY)
+
+                if not is_own_post:
+                    Notification.objects.create(
+                        user=post.user,
+                        type='message',
+                        title='New comment on your moment',
+                        description=f'{request.user.get_full_name() or request.user.username} commented on your post.',
+                        cta_label='View',
+                        cta_href=_notification_link_for_post(post),
+                    )
 
     return _redirect_to_feed(request, open_comments_post_id=post.id)
 
