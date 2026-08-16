@@ -20,17 +20,18 @@ class SafetyFlagAdmin(admin.ModelAdmin):
 
     def flagged_content(self, obj):
         """Full flagged text plus Gemini's reasoning, for the review screen."""
-        text = obj.message.text if obj.message else obj.blocked_text
-        source = "Sent message" if obj.message else "Auto-blocked (never sent)"
+        kind, text = obj.flagged_content_source()
         return format_html(
             "<p><b>{}:</b><br>{}</p><p><b>AI reasoning:</b><br>{}</p>",
-            source, text or "(no text)", obj.ai_reasoning or "(none provided)",
+            kind.replace("_", " ").title(),
+            text or "(no text)",
+            obj.ai_reasoning or "(none provided)",
         )
     flagged_content.short_description = "Flagged content & AI reasoning"
 
     def flagged_content_preview(self, obj):
         """Short one-line version for the list view."""
-        text = obj.message.text if obj.message else obj.blocked_text
+        _, text = obj.flagged_content_source()
         if not text:
             return "(no text)"
         return text if len(text) <= 60 else text[:57] + "..."
