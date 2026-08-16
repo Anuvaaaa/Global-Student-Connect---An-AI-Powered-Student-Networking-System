@@ -5,6 +5,81 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/home.css' %}" />
+<style>
+  /* -----------------------------------------------------------
+     DJANGO MESSAGES -- surfaces messages.error()/info() from
+     create_post_view/add_comment_view (e.g. the safety-check
+     block/fallback notices). Without this block these messages
+     were silently queued in the session and only appeared on
+     the NEXT page that happened to render the messages loop --
+     which is how they were showing up on /admin/ instead of here.
+  ----------------------------------------------------------- */
+  .gsc-messages {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: max-content;
+    max-width: 90vw;
+  }
+  .gsc-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.4;
+    background: #ffffff;
+    border: 1px solid #e8e6ff;
+    color: #1e1560;
+    box-shadow: 0 4px 16px rgba(30, 21, 96, 0.12);
+    animation: gsc-message-in 0.25s ease-out;
+  }
+  .gsc-message i {
+    font-size: 18px;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+  .gsc-message-error {
+    background: #fdecea;
+    border-color: #f6c6c1;
+    color: #7a1f14;
+  }
+  .gsc-message-error i { color: #d63b2f; }
+  .gsc-message-info {
+    background: #fff8e6;
+    border-color: #f5e0a3;
+    color: #6b4f00;
+  }
+  .gsc-message-info i { color: #f5a623; }
+  .gsc-message-success {
+    background: #eafaf0;
+    border-color: #bfe8cf;
+    color: #14532d;
+  }
+  .gsc-message-success i { color: #2f9e5b; }
+  .gsc-message-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.6;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0;
+  }
+  .gsc-message-close:hover { opacity: 1; }
+  @keyframes gsc-message-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
 {% endblock %}
 
 {% block assistant_body %}
@@ -25,6 +100,32 @@
     <div class="feed-header-row">
       <div class="feed-header">Student Moments 🌍</div>
     </div>
+
+    <!-- ---------------------------------------------------------------
+         MESSAGES — one-time notices from the safety pipeline (blocked
+         post/comment, or "safety agent napping" fallback notice).
+         Tagged with message.tags (error/info/success) so severity is
+         visually distinct without the view needing to know CSS classes.
+    --------------------------------------------------------------- -->
+    {% if messages %}
+    <div class="gsc-messages" id="gscMessages">
+      {% for message in messages %}
+      <div class="gsc-message gsc-message-{{ message.tags|default:'info' }}">
+        {% if message.tags == 'error' %}
+          <i class="ph-bold ph-warning-circle"></i>
+        {% elif message.tags == 'success' %}
+          <i class="ph-bold ph-check-circle"></i>
+        {% else %}
+          <i class="ph-bold ph-info"></i>
+        {% endif %}
+        <span>{{ message }}</span>
+        <button type="button" class="gsc-message-close" onclick="this.closest('.gsc-message').remove()" aria-label="Dismiss">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- ---------------------------------------------------------------
          POSTS — grouped by day (Today / Yesterday / date), replacing
@@ -216,6 +317,25 @@
 
 {% block extra_js %}
 <script>
+
+  // -------------------------------------------------------
+  // AUTO-DISMISS MESSAGES
+  // Mirrors the toast pattern used in converse.html/group_converse.html
+  // (auto-fade after a few seconds), but built on Django's messages
+  // framework since these views are plain POST-redirect, not AJAX.
+  // Manual dismiss (the × button) still works instantly regardless.
+  // -------------------------------------------------------
+  (function () {
+    const container = document.getElementById('gscMessages');
+    if (!container) return;
+    setTimeout(function () {
+      container.querySelectorAll('.gsc-message').forEach(function (el) {
+        el.style.transition = 'opacity 0.3s ease';
+        el.style.opacity = '0';
+        setTimeout(function () { el.remove(); }, 300);
+      });
+    }, 6000);
+  })();
 
   // -------------------------------------------------------
   // SCROLL POSITION PRESERVATION
