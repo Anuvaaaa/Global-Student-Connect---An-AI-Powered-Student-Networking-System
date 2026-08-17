@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
 
-from .models import SafetyFlag
+from .models import NudgeLog, SafetyFlag
 
 
 @admin.register(SafetyFlag)
@@ -89,3 +89,34 @@ class SafetyFlagAdmin(admin.ModelAdmin):
             flag.user.save(update_fields=['suspended_until', 'is_banned'])
             count += 1
         self.message_user(request, f"Suspension/ban lifted for {count} user(s).")
+
+
+@admin.register(NudgeLog)
+class NudgeLogAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'user', 'nudge_type', 'target_display',
+        'progress_pct', 'message_preview', 'sent_at',
+    )
+    list_filter = ('nudge_type', 'sent_at')
+    search_fields = ('user__email', 'message_text', 'badge__name', 'mission__name')
+    readonly_fields = ('user', 'nudge_type', 'badge', 'mission', 'progress_pct', 'message_text', 'sent_at')
+
+    def target_display(self, obj):
+        """Whichever of badge/mission is actually set — mirrors the
+        __str__ fallback already defined on NudgeLog itself, so the
+        list view and the model's own string representation never
+        disagree about which target a row is showing."""
+        return obj.badge.name if obj.badge_id else obj.mission.name
+    target_display.short_description = "Target"
+
+    def message_preview(self, obj):
+        text = obj.message_text
+        return text if len(text) <= 60 else text[:57] + "..."
+    message_preview.short_description = "Message"
+
+    def has_add_permission(self, request):
+        # NudgeLog rows only ever come from the Nudge agent pipeline —
+        # creating one by hand here wouldn't correspond to a real
+        # nudge actually having been sent, so this is read-only, same
+        # spirit as SafetyFlag's readonly_fields but for the whole model.
+        return False

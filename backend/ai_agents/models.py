@@ -1,12 +1,14 @@
+# TARGET PATH: ai_agents/models.py
 from django.db import models
 from django.conf import settings
 
 # NOTE: adjust these import paths to match where your teammates' models
 # actually live. Message -> chat app, Report -> moderation app,
-# Post/Comment -> social app.
+# Post/Comment -> social app, Badge/Mission -> engagement app.
 from chat.models import Message
 from moderation.models import Report
 from social.models import Post, Comment
+from engagement.models import Badge, Mission
 
 
 class SafetyFlag(models.Model):
@@ -97,24 +99,69 @@ class SafetyFlag(models.Model):
 
 
 class NudgeLog(models.Model):
-    """Supports the Nudge agent."""
+    """
+    Supports the Nudge agent.
+
+    SCHEMA CHANGE (post-handoff): nudge_type no longer covers
+    incomplete_profile/inactive_matching/streak_reminder — those were
+    speculative values for a periodic-nudge design that was never
+    built. Nudge is scoped to badge/mission progress only, event-driven
+    off engagement/signals.py's badge_progress_updated and
+    mission_progress_updated signals (see engagement/utils.py for
+    where those fire). badge/mission/progress_pct are new fields
+    needed for that: badge/mission identify WHAT the nudge was about
+    (required for the CheckConstraint below and for per-badge/mission
+    rate-limiting in ai_agents/services/nudge_service.py), and
+    progress_pct snapshots progress at nudge time so rate-limiting can
+    compare against it without re-querying UserMissionProgress/
+    UserEngagement at read time.
+    """
 
     NUDGE_TYPE_CHOICES = [
-        ("incomplete_profile", "Incomplete Profile"),
-        ("inactive_matching", "Inactive Matching"),
-        ("streak_reminder", "Streak Reminder"),
+        ("badge_progress", "Badge Progress"),
+        ("mission_progress", "Mission Progress"),
     ]
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="nudge_logs"
     )
-    nudge_type = models.CharField(max_length=30, choices=NUDGE_TYPE_CHOICES)
+    nudge_type = models.CharField(max_length=20, choices=NUDGE_TYPE_CHOICES)
+    badge = models.ForeignKey(
+        Badge, on_delete=models.CASCADE, null=True, blank=True,
+        related_name="nudge_logs",
+        help_text="Set when nudge_type is badge_progress. Exactly one of "
+                   "badge/mission must be set — enforced by the "
+                   "CheckConstraint below.",
+    )
+    mission = models.ForeignKey(
+        Mission, on_delete=models.CASCADE, null=True, blank=True,
+        related_name="nudge_logs",
+        help_text="Set when nudge_type is mission_progress. Exactly one of "
+                   "badge/mission must be set — enforced by the "
+                   "CheckConstraint below.",
+    )
+    progress_pct = models.IntegerField(
+        help_text="Progress (0-100) toward the badge/mission at the moment "
+                   "this nudge was sent. Used for delta-based rate-limiting "
+                   "— see ai_agents/services/nudge_service.py.",
+    )
     message_text = models.TextField()
     sent_at = models.DateTimeField(auto_now_add=True)
-    was_dismissed = models.BooleanField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(badge__isnull=False, mission__isnull=True)
+                    | models.Q(badge__isnull=True, mission__isnull=False)
+                ),
+                name="nudgelog_exactly_one_of_badge_or_mission",
+            )
+        ]
 
     def __str__(self):
-        return f"NudgeLog(user={self.user_id}, type={self.nudge_type})"
+        target = self.badge.name if self.badge_id else self.mission.name
+        return f"NudgeLog(user={self.user_id}, type={self.nudge_type}, target={target})"
 
 
 class AssistantThread(models.Model):
