@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from .models import MessageTranslation
 from engagement.models import UserEngagement
+from engagement.utils import record_mission_progress
 
 
 def translate_message(message, target_language, for_user=None):
@@ -41,6 +42,7 @@ def translate_message(message, target_language, for_user=None):
         eng, _ = UserEngagement.objects.get_or_create(user=for_user)
         eng.translations_used += 1
         eng.save()
+        record_mission_progress(for_user, 'use_translation_5x')
 
     return translation
 

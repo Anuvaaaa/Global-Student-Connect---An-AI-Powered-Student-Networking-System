@@ -12,7 +12,7 @@ from .models import Conversation
 from .utils import country_code_for, date_label_for, translate_message
 from ai_agents.services.safety_pipeline import check_message
 from engagement.models import UserEngagement
-from engagement.utils import check_and_award_badges
+from engagement.utils import check_and_award_badges, record_mission_progress
 from matching.models import GroupMember
 from matching.utils import compute_compatibility_score, is_blocked_either_way
 from ai_agents.models import SafetyFlag
@@ -416,6 +416,7 @@ def send_message_view(request, conversation_id):
     eng.messages_sent += 1
     eng.save()
     check_and_award_badges(request.user)
+    record_mission_progress(request.user, 'send_20_messages')
 
     if conversation.type == 'direct' and access['other_user']:
         other_profile = getattr(access['other_user'], 'profile', None)

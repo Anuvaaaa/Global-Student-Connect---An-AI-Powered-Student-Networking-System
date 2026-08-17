@@ -41,7 +41,7 @@ from .models import MatchRequest, Connection, Block, StudentGroup, GroupMember
 from .utils import is_blocked_either_way, compute_compatibility_score, get_best_match, get_open_group_for
 from chat.models import Conversation
 from engagement.models import Notification, UserEngagement
-from engagement.utils import check_and_award_badges  # Person A's function — confirm signature
+from engagement.utils import check_and_award_badges, record_mission_progress  # Person A's function — confirm signature
 from social.models import UserInterest
 
 GROUP_MAX_MEMBERS = 4  # prototype's groups were 3-4 people
@@ -280,6 +280,7 @@ def accept_match_view(request, request_id):
         eng.save()
 
         check_and_award_badges(user)
+        record_mission_progress(user, 'start_conversation')
 
     Notification.objects.create(
         user=match_request.requester,
@@ -344,6 +345,7 @@ def _credit_group_membership(user):
     eng.groups_joined += 1
     eng.save()
     check_and_award_badges(user)
+    record_mission_progress(user, 'join_a_group')
 
 
 # Deterministic group naming — NOT one of the 4 real-LLM agents scoped in

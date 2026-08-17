@@ -1,9 +1,15 @@
+# TARGET PATH: engagement/utils.py
 from datetime import timedelta
 
 from django.utils import timezone
 
 from .models import Badge, Mission, UserBadge, UserMissionProgress
-from .signals import badge_earned, mission_completed
+from .signals import (
+    badge_earned,
+    badge_progress_updated,
+    mission_completed,
+    mission_progress_updated,
+)
 
 # Maps Badge.metric values to the matching UserEngagement field name.
 # 'matches' has no direct counter on UserEngagement — conversation_count
@@ -29,6 +35,12 @@ BADGE_GROUP_ICONS = {
 
 TIER_ORDER = {'bronze': 0, 'silver': 1, 'gold': 2}
 
+# How close (0-100) a user must be to an un-earned badge/mission before
+# badge_progress_updated / mission_progress_updated fires. Below this,
+# progress updates happen silently with no signal — nobody wants a
+# nudge at 5%.
+NUDGE_THRESHOLD_PCT = 70
+
 
 def check_and_award_badges(user):
     """
@@ -48,6 +60,13 @@ def check_and_award_badges(user):
     needing to react to a badge being earned later (an email alert, an
     analytics log, etc.) just adds another receiver — this function
     never changes.
+
+    Also fires badge_progress_updated for any un-earned badge whose
+    progress has crossed NUDGE_THRESHOLD_PCT this call — a second,
+    independent signal on the same loop, powering the Nudge agent.
+    This does NOT change what this function returns or awards; it's
+    purely an additional announcement using values already computed
+    in the loop below.
 
     Returns the list of newly-earned Badge objects (empty list if none).
     """
@@ -71,6 +90,12 @@ def check_and_award_badges(user):
             UserBadge.objects.create(user=user, badge=badge)
             badge_earned.send(sender=Badge, user=user, badge=badge)
             newly_earned.append(badge)
+        elif badge.threshold:
+            progress_pct = min(int(current_value / badge.threshold * 100), 100)
+            if progress_pct >= NUDGE_THRESHOLD_PCT:
+                badge_progress_updated.send(
+                    sender=Badge, user=user, badge=badge, progress_pct=progress_pct,
+                )
 
     return newly_earned
 
@@ -161,6 +186,14 @@ def record_mission_progress(user, mission_key, amount=1):
     period, creating the row if needed, and marks completed_at once
     the target is reached. No-ops quietly if the Mission doesn't exist
     (e.g. not seeded yet) or is already completed this period.
+
+    Fires exactly one signal per call that actually changes progress:
+    mission_completed if this call finished it, otherwise
+    mission_progress_updated (used by the Nudge agent) with the
+    current progress_pct — regardless of whether that pct has crossed
+    NUDGE_THRESHOLD_PCT. The threshold gate lives in the Nudge
+    receiver/service, not here, to keep this function's only job as
+    "update progress and announce the new state."
     """
     try:
         mission = Mission.objects.get(key=mission_key)
@@ -186,6 +219,11 @@ def record_mission_progress(user, mission_key, amount=1):
 
     if just_completed:
         mission_completed.send(sender=Mission, user=user, mission=mission)
+    elif mission.target:
+        progress_pct = min(int(progress_row.progress / mission.target * 100), 100)
+        mission_progress_updated.send(
+            sender=Mission, user=user, mission=mission, progress_pct=progress_pct,
+        )
 
     return progress_row
 
