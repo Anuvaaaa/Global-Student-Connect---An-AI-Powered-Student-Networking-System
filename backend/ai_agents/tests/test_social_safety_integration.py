@@ -1,16 +1,10 @@
-"""
-Integration tests for the Safety agent wired into the social app
-(post creation and comment creation). Mirrors the mocking style used
-in test_safety_pipeline.py for the chat app: check_message() is
-mocked at the point social/views.py imports it, so these tests never
-make a real Gemini call.
-"""
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
 from ai_agents.models import SafetyFlag
+from engagement.models import Notification, UserEngagement
 from social.models import Comment, Post
 
 User = get_user_model()
@@ -24,6 +18,7 @@ class PostSafetyIntegrationTests(TestCase):
 
     @patch("social.views.check_message")
     def test_clean_post_saves_no_flag(self, mock_check):
+        # normal input
         mock_check.return_value = {"action": "allow", "stage": "clear"}
 
         self.client.post("/post/create/", {"text": "hello world"})
@@ -33,6 +28,7 @@ class PostSafetyIntegrationTests(TestCase):
 
     @patch("social.views.check_message")
     def test_high_severity_post_blocked_not_saved(self, mock_check):
+        # negative case — high severity triggers auto-block
         mock_check.return_value = {
             "action": "auto_block", "stage": "llm", "flagged": True,
             "category": "harassment", "severity": "high",
@@ -50,6 +46,7 @@ class PostSafetyIntegrationTests(TestCase):
 
     @patch("social.views.check_message")
     def test_medium_severity_post_saved_and_queued(self, mock_check):
+        # behavior — medium severity still publishes, but queues for review
         mock_check.return_value = {
             "action": "queue_human_review", "stage": "llm", "flagged": True,
             "category": "spam", "severity": "medium",
@@ -65,7 +62,23 @@ class PostSafetyIntegrationTests(TestCase):
         self.assertIsNone(flag.blocked_text)
 
     @patch("social.views.check_message")
+    def test_low_severity_post_saved_and_queued(self, mock_check):
+        # boundary — lowest flagged severity still queues, not blocked
+        mock_check.return_value = {
+            "action": "queue_human_review", "stage": "llm", "flagged": True,
+            "category": "other", "severity": "low",
+            "confidence": 0.5, "reasoning": "mild concern",
+        }
+
+        self.client.post("/post/create/", {"text": "mildly odd text"})
+
+        self.assertEqual(Post.objects.count(), 1)
+        flag = SafetyFlag.objects.get()
+        self.assertEqual(flag.severity, "low")
+
+    @patch("social.views.check_message")
     def test_gemini_down_fails_open_post_still_saves(self, mock_check):
+        # unexpected input — upstream AI service failure
         mock_check.return_value = {"action": "allow", "stage": "error_fallback"}
 
         self.client.post("/post/create/", {"text": "normal text"})
@@ -77,13 +90,14 @@ class PostSafetyIntegrationTests(TestCase):
 class CommentSafetyIntegrationTests(TestCase):
     def setUp(self):
         self.author = User.objects.create_user(username="author", email="author@test.edu", password="pw")
-        self.commenter = User.objects.create_user(username="c", email="c@test.edu", password="pw")
+        self.commenter = User.objects.create_user(username="commenter", email="c@test.edu", password="pw")
         self.post = Post.objects.create(user=self.author, text="a post")
         self.client = Client()
         self.client.force_login(self.commenter)
 
     @patch("social.views.check_message")
     def test_blocked_comment_not_saved_no_engagement_credit(self, mock_check):
+        # negative case — blocked content must not earn engagement credit
         mock_check.return_value = {
             "action": "auto_block", "stage": "llm", "flagged": True,
             "category": "harassment", "severity": "high",
@@ -97,14 +111,12 @@ class CommentSafetyIntegrationTests(TestCase):
         self.assertIsNone(flag.comment)
         self.assertEqual(flag.blocked_text, "abusive text")
 
-        # An auto-blocked comment never actually reached the post, so it
-        # must not count toward the commenter's engagement stats.
-        from engagement.models import UserEngagement
         engagement = UserEngagement.objects.filter(user=self.commenter).first()
         self.assertTrue(engagement is None or engagement.comments_made == 0)
 
     @patch("social.views.check_message")
     def test_flagged_comment_still_saves_and_links(self, mock_check):
+        # behavior — queued comment is saved and linked to its SafetyFlag
         mock_check.return_value = {
             "action": "queue_human_review", "stage": "llm", "flagged": True,
             "category": "other", "severity": "low",
@@ -120,6 +132,7 @@ class CommentSafetyIntegrationTests(TestCase):
 
     @patch("social.views.check_message")
     def test_blocked_comment_does_not_notify_post_author(self, mock_check):
+        # negative case — blocked content must not trigger a notification
         mock_check.return_value = {
             "action": "auto_block", "stage": "llm", "flagged": True,
             "category": "harassment", "severity": "high",
@@ -128,5 +141,23 @@ class CommentSafetyIntegrationTests(TestCase):
 
         self.client.post(f"/post/{self.post.id}/comment/", {"text": "abusive text"})
 
-        from engagement.models import Notification
         self.assertEqual(Notification.objects.filter(user=self.author).count(), 0)
+
+    @patch("social.views.check_message")
+    def test_clean_comment_on_own_post_no_self_notification(self, mock_check):
+        # behavior — commenting on your own post must not self-notify
+        mock_check.return_value = {"action": "allow", "stage": "clear"}
+        self.client.logout()
+        self.client.force_login(self.author)
+
+        self.client.post(f"/post/{self.post.id}/comment/", {"text": "note to self"})
+
+        self.assertEqual(Notification.objects.filter(user=self.author).count(), 0)
+
+    @patch("social.views.check_message")
+    def test_comment_on_nonexistent_post_returns_404(self, mock_check):
+        # unexpected input — invalid post id
+        mock_check.return_value = {"action": "allow", "stage": "clear"}
+        response = self.client.post("/post/999999/comment/", {"text": "hello"})
+        self.assertEqual(response.status_code, 404)
+        mock_check.assert_not_called()
