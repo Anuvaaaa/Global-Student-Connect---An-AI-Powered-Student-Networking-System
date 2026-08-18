@@ -15,8 +15,6 @@ from social.models import UserInterest
 
 # =====================================================================
 # STEP 1 — BLOCKING HELPER
-# Build this first. Person B's social/views.py imports this to filter
-# posts/comments. Tell them as soon as it exists.
 # =====================================================================
 def is_blocked_either_way(user_a, user_b):
     """
@@ -32,10 +30,15 @@ def is_blocked_either_way(user_a, user_b):
 
 # =====================================================================
 # STEP 2 — COMPATIBILITY SCORE
-# Deliberately NOT an AI call yet (per the deferred-AI-agents decision
-# in the project brief). Plain Python: count shared interests, small
-# bonus for same country. Swap this out for a real "Matching Agent"
-# call later without changing anything that calls it.
+# Plain Python: count shared interests, small bonus for same country.
+# NOT deleted or changed now that the Matching agent exists — this is
+# the fail-open fallback ai_agents/services/matching_service.py calls
+# whenever Gemini is unavailable, over quota, or returns something
+# invalid. get_best_match() below no longer calls this directly; it
+# calls get_compatibility_score(), which calls this internally only on
+# the fallback path. Kept 100% unchanged so that fallback behavior is
+# exactly the formula that was already trusted before any AI agent
+# existed.
 # =====================================================================
 def compute_compatibility_score(user_a, user_b):
     a_interests = set(
@@ -179,12 +182,19 @@ def get_best_match(user):
     Picks the single best candidate for 'Find a Friend' — highest
     compatibility score. Returns (user, score) or (None, None) if the
     pool is empty.
+
+    Scoring is delegated to ai_agents.services.matching_service, which
+    tries the Gemini-backed Matching agent first and transparently falls
+    back to compute_compatibility_score() above on any failure — this
+    function doesn't need to know or care which path produced the score.
     """
     candidates = list(get_available_matches(user))
     if not candidates:
         return None, None
 
-    scored = [(c, compute_compatibility_score(user, c)) for c in candidates]
+    from ai_agents.services.matching_service import get_compatibility_score  # local import avoids a circular import at module load
+
+    scored = [(c, get_compatibility_score(user, c)) for c in candidates]
     scored.sort(key=lambda pair: pair[1], reverse=True)
     return scored[0]
 
