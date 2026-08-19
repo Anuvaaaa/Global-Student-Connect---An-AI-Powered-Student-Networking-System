@@ -6,44 +6,52 @@ from django.conf import settings
 
 class GeminiClient:
     """
-    Singleton pattern used here: only one configured Gemini client exists
-    for the whole app. Agents call GeminiClient.get_instance() instead of
-    configuring their own connection.
+    Singleton pattern used here, keyed by API key group. Each key group
+    ("primary", "secondary", etc.) gets its own configured client,
+    created once and cached. Agents call GeminiClient.get_instance()
+    instead of configuring their own connection. Calling with no
+    argument defaults to "primary", so existing call sites that already
+    call GeminiClient.get_instance() keep working unchanged.
 
-    Retry/timeout tuning (added): the SDK's own defaults retry transient
-    errors (timeouts, 429s, 5xx) up to 5 times with exponential backoff
-    (1s, 2s, 4s, 8s, 16s...) before giving up — worst case 30+ seconds.
-    That's exactly what produced the 24-27s hangs seen on flagged/
-    quota-exhausted requests. Since safety_pipeline.py and
-    nudge_service.py both already fail open on any exception, there's no
-    benefit to retrying 5 times before falling back — every one of
-    those seconds stalls a real user waiting on a fallback that was
-    going to happen anyway. Cut to 2 attempts with a short timeout so
-    failures surface fast and the fail-open path actually behaves like
-    a fallback, not a 25-second delay before one.
+    Retry/timeout: attempts=1, timeout=12_000ms. Every agent already
+    fails open on any exception, so a single 12s attempt before falling
+    back avoids stacking a second full timeout window on top of a call
+    that's already failing. timeout stays above the API's 10s floor.
     """
-    _instance = None
+    _instances = {}
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._client = genai.Client(
-                api_key=settings.GEMINI_API_KEY,
+    # Maps a key group name to the Django setting that holds its key.
+    KEY_GROUP_SETTINGS = {
+        "primary": "GEMINI_API_KEY",
+        "secondary": "GEMINI_API_KEY_SECONDARY",
+    }
+
+    def __new__(cls, key_group="primary"):
+        if key_group not in cls._instances:
+            instance = super().__new__(cls)
+            instance._client = genai.Client(
+                api_key=cls._resolve_api_key(key_group),
                 http_options=types.HttpOptions(
-                    timeout=12_000,  # milliseconds — API's own floor is 10s; kept some headroom above it
+                    timeout=12_000,  # milliseconds — API floor is 10s, headroom kept above it
                     retry_options=types.HttpRetryOptions(
-                        attempts=2,
-                        initial_delay=1.0,
-                        max_delay=4.0,
+                        attempts=1,
                         http_status_codes=[408, 429, 500, 502, 503, 504],
                     ),
                 ),
             )
-        return cls._instance
+            cls._instances[key_group] = instance
+        return cls._instances[key_group]
 
     @classmethod
-    def get_instance(cls):
-        return cls()
+    def _resolve_api_key(cls, key_group):
+        setting_name = cls.KEY_GROUP_SETTINGS.get(key_group)
+        if setting_name is None:
+            raise ValueError(f"Unknown Gemini API key group: {key_group!r}")
+        return getattr(settings, setting_name)
+
+    @classmethod
+    def get_instance(cls, key_group="primary"):
+        return cls(key_group)
 
     def get_client(self):
         return self._client

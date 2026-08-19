@@ -32,6 +32,23 @@ class AIAgent(ABC):
     # complies.
     response_schema = None
 
+    # Optional: subclasses can pin sampling temperature (0.0-2.0, Gemini
+    # default is ~1.0). None leaves the SDK default in place. Added for
+    # MatchingAgent, which needs a deterministic-ish ranking — at default
+    # temperature, the same two candidates scored 45 on one call and 98
+    # on the next, which could flip which candidate get_best_match()
+    # picks between identical calls. temperature=0 doesn't make Gemini
+    # stop scoring — it still reasons over the full prompt and produces
+    # a score anywhere in 0-100 — it just makes that reasoning consistent
+    # with itself instead of resampling a different answer each time.
+    temperature = None
+
+    # Optional: subclasses can set this to route calls through a
+    # different API key. Default "primary" matches every agent's
+    # current behavior — no agent needs to change unless it should
+    # use a separate key/quota pool.
+    api_key_group = "primary"
+
     @abstractmethod
     def build_prompt(self, payload: dict) -> str:
         """Turn input data into the prompt string sent to Gemini."""
@@ -50,16 +67,19 @@ class AIAgent(ABC):
         parse_response(), never run() itself.
         """
         from ai_agents.client import GeminiClient
-        client = GeminiClient.get_instance().get_client()
+        client = GeminiClient.get_instance(self.api_key_group).get_client()
         prompt = self.build_prompt(payload)
 
         config = None
-        if self.response_schema is not None:
+        if self.response_schema is not None or self.temperature is not None:
             from google.genai import types
-            config = types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=self.response_schema,
-            )
+            config_kwargs = {}
+            if self.response_schema is not None:
+                config_kwargs["response_mime_type"] = "application/json"
+                config_kwargs["response_schema"] = self.response_schema
+            if self.temperature is not None:
+                config_kwargs["temperature"] = self.temperature
+            config = types.GenerateContentConfig(**config_kwargs)
 
         response = client.models.generate_content(
             model=self.model_name,
