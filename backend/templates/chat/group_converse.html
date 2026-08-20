@@ -388,6 +388,16 @@
       banner.style.display = 'flex';
       document.getElementById('translateBannerText').textContent =
         'Auto-translating messages to {{ translate_into|escapejs }}';
+      {% if translation_fallback_occurred %}
+        document.getElementById('translateBannerText').textContent =
+          'Translation agent is taking a quick nap 😴 — showing original text for now';
+        banner.classList.add('translate-banner-napping');
+        setTimeout(() => {
+          document.getElementById('translateBannerText').textContent =
+            'Auto-translating messages to {{ translate_into|escapejs }}';
+          banner.classList.remove('translate-banner-napping');
+        }, 5000);
+      {% endif %}
     {% else %}
       banner.style.display = 'none';
     {% endif %}
@@ -591,6 +601,7 @@
           btn.innerHTML = '<i class="ph-bold ph-check"></i> Translated ✓';
           btn.classList.add('translated');
           btn.disabled = true;
+          if (data.translation_notice) showToast(data.translation_notice);
         });
     }
 
