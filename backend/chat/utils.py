@@ -1,11 +1,5 @@
 """
 chat/utils.py
-
-STUB translation logic — per the deferred-AI-agents decision, this just
-echoes the original text for now. The MessageTranslation table and every
-caller of this function already work end-to-end, so swapping in a real
-Translation Agent API call later only means changing what happens
-inside this one function.
 """
 
 import datetime
@@ -13,6 +7,7 @@ import datetime
 from django.utils import timezone
 
 from .models import MessageTranslation
+from ai_agents.services.translation_pipeline import translate_text
 from engagement.models import UserEngagement
 from engagement.utils import record_mission_progress
 
@@ -28,17 +23,52 @@ def translate_message(message, target_language, for_user=None):
     UserEngagement.translations_used. Only counts real "first-time"
     translation work, not every re-render of an already-translated
     message.
+
+    Retry-on-view: if the cached row was itself a fallback (is_fallback
+    True — the original attempt hit the circuit breaker or a Gemini
+    error), this re-attempts translation on every subsequent call rather
+    than trusting the stale passthrough forever. Once a real translation
+    succeeds, is_fallback flips to False and it's cached for good, same
+    as any other row. A row that's already a real translation is never
+    re-sent to Gemini.
+
+    The returned MessageTranslation also gets a runtime-only
+    `used_fallback` attribute (never persisted separately — mirrors
+    is_fallback) so callers that only care about the current call's
+    outcome, not the stored flag, can check it the same way as before.
     """
     if not target_language:
         return None
 
-    translation, created = MessageTranslation.objects.get_or_create(
+    existing = MessageTranslation.objects.filter(
+        message=message, language=target_language
+    ).first()
+
+    if existing is not None and not existing.is_fallback:
+        existing.used_fallback = False
+        return existing
+
+    result = translate_text(message.text, target_language)
+    is_fallback = (result['stage'] == 'error_fallback')
+
+    if existing is not None:
+        # retrying a previously-failed row
+        if not is_fallback:
+            existing.translated_text = result['translated_text']
+            existing.is_fallback = False
+            existing.save()
+        existing.used_fallback = is_fallback
+        return existing
+
+    translation = MessageTranslation.objects.create(
         message=message,
         language=target_language,
-        defaults={'translated_text': message.text},  # stub: passthrough
+        translated_text=result['translated_text'],
+        is_fallback=is_fallback,
     )
+    translation.used_fallback = is_fallback
 
-    if created and for_user is not None:
+    if for_user is not None:
         eng, _ = UserEngagement.objects.get_or_create(user=for_user)
         eng.translations_used += 1
         eng.save()

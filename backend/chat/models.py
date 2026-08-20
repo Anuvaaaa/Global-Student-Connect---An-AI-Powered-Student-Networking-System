@@ -24,3 +24,4 @@ class MessageTranslation(models.Model):
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='translations')
     language = models.CharField(max_length=50)
     translated_text = models.TextField()
+    is_fallback = models.BooleanField(default=False)

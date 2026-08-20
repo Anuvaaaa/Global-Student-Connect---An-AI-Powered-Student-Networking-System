@@ -206,11 +206,14 @@ def conversation_view(request, conversation_id):
 
     messages_qs = conversation.messages.select_related('sender').order_by('sent_at')
     message_list = []
+    translation_fallback_occurred = False
     for msg in messages_qs:
         translated_text = None
         if auto_translate_on and msg.sender_id != request.user.id:
             translation = translate_message(msg, target_language, for_user=request.user)
             translated_text = translation.translated_text if translation else None
+            if translation is not None and getattr(translation, 'used_fallback', False):
+                translation_fallback_occurred = True
 
         message_list.append({
             'id': msg.id,
@@ -246,6 +249,7 @@ def conversation_view(request, conversation_id):
         'auto_translate_on': auto_translate_on,
         'translate_into': target_language,
         'connection_active': access['is_active'],
+        'translation_fallback_occurred': translation_fallback_occurred,
     }
     return render(request, 'chat/converse.html', context)
 
@@ -272,11 +276,14 @@ def group_conversation_view(request, conversation_id):
 
     messages_qs = conversation.messages.select_related('sender').order_by('sent_at')
     message_list = []
+    translation_fallback_occurred = False
     for msg in messages_qs:
         translated_text = None
         if auto_translate_on and msg.sender_id != request.user.id:
             translation = translate_message(msg, target_language, for_user=request.user)
             translated_text = translation.translated_text if translation else None
+            if translation is not None and getattr(translation, 'used_fallback', False):
+                translation_fallback_occurred = True
 
         sender_identity = _display_identity(msg.sender)
         message_list.append({
@@ -355,6 +362,7 @@ def group_conversation_view(request, conversation_id):
         'auto_translate_on': auto_translate_on,
         'translate_into': target_language,
         'connection_active': access['is_active'],
+        'translation_fallback_occurred': translation_fallback_occurred,
     }
     return render(request, 'chat/group_converse.html', context)
 
@@ -418,23 +426,13 @@ def send_message_view(request, conversation_id):
     check_and_award_badges(request.user)
     record_mission_progress(request.user, 'send_20_messages')
 
-    if conversation.type == 'direct' and access['other_user']:
-        other_profile = getattr(access['other_user'], 'profile', None)
-        if other_profile and other_profile.auto_translate:
-            target = other_profile.translate_into or other_profile.primary_language or 'English'
-            translate_message(message, target, for_user=access['other_user'])
-
-    elif conversation.type == 'group':
-        other_active_members = (
-            GroupMember.objects.filter(group=conversation.group, left_at__isnull=True)
-            .exclude(user=request.user)
-            .select_related('user__profile')
-        )
-        for gm in other_active_members:
-            member_profile = getattr(gm.user, 'profile', None)
-            if member_profile and member_profile.auto_translate:
-                target = member_profile.translate_into or member_profile.primary_language or 'English'
-                translate_message(message, target, for_user=gm.user)
+    # Recipient-side auto-translation is intentionally NOT done here.
+    # poll_messages_view (and conversation_view on next open) already
+    # translates incoming messages lazily for auto-translate users —
+    # doing it again here would mean the sender's request blocks on an
+    # extra Gemini call (one per auto-translate group member, in the
+    # worst case) for zero benefit, since the recipient's own poll picks
+    # the message up within seconds regardless.
 
     # The sender here is always the currently logged-in user, who by
     # definition can't be a deleted account (deleted users are logged
@@ -529,7 +527,13 @@ def translate_message_view(request, conversation_id, message_id):
     if translation is None:
         return JsonResponse({'ok': False, 'error': 'Could not translate'}, status=400)
 
-    return JsonResponse({'ok': True, 'translated_text': translation.translated_text})
+    response_data = {'ok': True, 'translated_text': translation.translated_text}
+    if getattr(translation, 'used_fallback', False):
+        response_data['translation_notice'] = (
+            "Heads up: our translation agent is taking a quick nap 😴 — "
+            "showing the original text for now."
+        )
+    return JsonResponse(response_data)
 
 
 @login_required
