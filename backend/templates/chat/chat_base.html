@@ -15,6 +15,14 @@
   <!-- Shared base styles for conversation pages -->
   <link rel="stylesheet" href="{% static 'css/shared-chat.css' %}" />
 
+  <!-- Spin animation for the send button's loading state — kept inline
+       since it's a tiny, single-purpose rule not worth a shared CSS
+       file entry -->
+  <style>
+    @keyframes ph-spin-anim { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .ph-spin { display: inline-block; animation: ph-spin-anim 0.8s linear infinite; }
+  </style>
+
   <!-- Page-specific styles -->
   {% block extra_css %}{% endblock %}
 </head>
@@ -59,7 +67,7 @@
       onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendMessage(); }"
       maxlength="500"
     />
-    <button type="button" class="send-btn" onclick="sendMessage()" aria-label="Send message">
+    <button type="button" class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send message">
       <i class="ph-bold ph-paper-plane-tilt"></i>
     </button>
   </div>
@@ -116,6 +124,28 @@
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
       }, 3000);
+    }
+
+    // -------------------------------------------------------
+    // SEND BUTTON BUSY STATE
+    // Shared by both converse.html and group_converse.html's
+    // sendMessage(). Disables input + button and swaps the icon to a
+    // spinner the instant Send is pressed, so a slow Safety-agent
+    // round trip (can run close to Gemini's own ~10s floor) never
+    // looks like a frozen page. Always paired with a call to
+    // setSendingState(false) in a .finally() so it can't get stuck
+    // disabled after a network error.
+    // -------------------------------------------------------
+    function setSendingState(isSending) {
+      const input = document.getElementById('messageInput');
+      const btn   = document.getElementById('sendBtn');
+      if (!input || !btn) return;
+
+      input.disabled = isSending;
+      btn.disabled = isSending;
+      btn.innerHTML = isSending
+        ? '<i class="ph-bold ph-spinner ph-spin"></i>'
+        : '<i class="ph-bold ph-paper-plane-tilt"></i>';
     }
 
   </script>

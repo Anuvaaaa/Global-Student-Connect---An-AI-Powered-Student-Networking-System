@@ -517,6 +517,8 @@
       const text  = input.value.trim();
       if (!text) return;
 
+      setSendingState(true);
+
       fetch(sendUrl, {
         method: 'POST',
         headers: {
@@ -544,7 +546,8 @@
           input.value = '';
           scrollToBottom();
         })
-        .catch(() => showToast('Network error — message not sent'));
+        .catch(() => showToast('Network error — message not sent'))
+        .finally(() => setSendingState(false));
     }
 
     window.addEventListener('load', scrollToBottom);

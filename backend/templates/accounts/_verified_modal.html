@@ -1,0 +1,95 @@
+{% comment %}
+Included wherever a page might be the first one rendered after sign-in.
+show_verified_notice comes from accounts.context_processors.verified_notice
+and is only True once, on the exact next page load after
+complete_verification() runs — see accounts/verification.py.
+
+Self-contained (styles + markup + script together) so this can be
+dropped into base.html later with a single {% include %} instead of
+being pasted into every page separately.
+{% endcomment %}
+
+{% if show_verified_notice %}
+<div class="verified-modal-overlay" id="verifiedModalOverlay">
+  <div class="verified-modal-card">
+    <div class="verified-modal-icon">🎓</div>
+    <h2 class="verified-modal-title">You're Verified!</h2>
+    <p class="verified-modal-text">
+      Your academic email has been confirmed. Welcome to Global Student Connect.
+    </p>
+  </div>
+</div>
+
+<style>
+  .verified-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 21, 96, 0.55); /* navy, translucent */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.4s ease;
+  }
+
+  .verified-modal-overlay.fade-out {
+    opacity: 0;
+  }
+
+  .verified-modal-card {
+    background: #f8f7ff;
+    border: 1px solid #e8e6ff;
+    border-radius: 20px;
+    padding: 40px 36px;
+    max-width: 340px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(30, 21, 96, 0.25);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    animation: verifiedModalPop 0.35s ease;
+  }
+
+  @keyframes verifiedModalPop {
+    from { transform: scale(0.9); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
+  .verified-modal-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+  }
+
+  .verified-modal-title {
+    color: #1e1560;
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 8px;
+  }
+
+  .verified-modal-text {
+    color: #3d2fd9;
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0;
+    line-height: 1.5;
+  }
+</style>
+
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('verifiedModalOverlay');
+    if (!overlay) return;
+
+    // Auto-dismiss after a few seconds. Also closeable early by
+    // clicking anywhere on the overlay, in case someone wants to get
+    // straight to the page underneath.
+    const dismiss = () => {
+      overlay.classList.add('fade-out');
+      setTimeout(() => overlay.remove(), 400);
+    };
+
+    overlay.addEventListener('click', dismiss);
+    setTimeout(dismiss, 3000);
+  });
+</script>
+{% endif %}

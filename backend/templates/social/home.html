@@ -79,6 +79,36 @@
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  /* -----------------------------------------------------------
+     POST BUTTON — LOADING STATE
+     create_post_view is a plain POST-redirect (no fetch), so this
+     button's disabled/wiggle state stays visible for the full real
+     page-navigation wait, not just a fetch round trip. A spinning
+     icon looked wrong on a wide rectangular text button, so instead
+     the button label is replaced by a short looping wave line —
+     built as two copies of the same SVG path placed back to back,
+     scrolled left by exactly one period on a seamless loop.
+  ----------------------------------------------------------- */
+  .modal-post-btn:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+  }
+  .post-btn-wiggle {
+    display: inline-block;
+    width: 30px;
+    height: 16px;
+    overflow: hidden;
+    vertical-align: middle;
+  }
+  .post-btn-wiggle svg {
+    display: block;
+    animation: post-btn-wiggle-scroll 0.7s linear infinite;
+  }
+  @keyframes post-btn-wiggle-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-15px); }
+  }
 </style>
 {% endblock %}
 
@@ -293,7 +323,7 @@
       <div class="modal-username">You</div>
     </div>
 
-    <form method="post" action="{% url 'social:create_post' %}">
+    <form method="post" action="{% url 'social:create_post' %}" id="createPostForm">
       {% csrf_token %}
       <input type="hidden" name="next_page" value="{{ current_page }}">
       <textarea
@@ -306,7 +336,7 @@
 
       <div class="char-count"><span id="charCount">0</span>/200</div>
 
-      <button type="submit" class="modal-post-btn">
+      <button type="submit" class="modal-post-btn" id="postSubmitBtn">
         Post Moment
       </button>
     </form>
@@ -351,6 +381,31 @@
       sessionStorage.setItem('gsc_scrollY', window.scrollY);
     });
   });
+
+  // -------------------------------------------------------
+  // POST BUTTON LOADING STATE
+  // create_post_view is a plain full-page POST-redirect, so this
+  // stays visible right up until the browser actually navigates to
+  // the reloaded page — no need to ever set it back to normal here.
+  // -------------------------------------------------------
+  (function () {
+    const form = document.getElementById('createPostForm');
+    const btn = document.getElementById('postSubmitBtn');
+    const textarea = document.getElementById('momentText');
+    if (!form || !btn) return;
+
+    form.addEventListener('submit', function () {
+      btn.disabled = true;
+      if (textarea) textarea.readOnly = true;
+      btn.innerHTML =
+        '<span class="post-btn-wiggle">' +
+          '<svg width="60" height="16" viewBox="0 0 60 16" fill="none">' +
+            '<path d="M0 8 Q 7.5 0, 15 8 T 30 8 T 45 8 T 60 8" ' +
+              'stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+          '</svg>' +
+        '</span>';
+    });
+  })();
 
   window.addEventListener('DOMContentLoaded', function () {
     const savedY = sessionStorage.getItem('gsc_scrollY');
