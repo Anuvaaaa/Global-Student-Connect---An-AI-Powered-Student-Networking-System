@@ -12,6 +12,8 @@ from social.models import Interest, UserInterest
 
 from .forms import ProfileSetupForm
 from .models import Profile
+from .utils import get_block_message
+from .verification import complete_verification, get_verification_block_message
 
 
 def login_view(request):
@@ -31,24 +33,26 @@ def login_view(request):
     if request.method == 'POST' and form.is_valid():
         user = form.get_user()
 
-        if user.is_banned:
-            block_message = (
-                "Your account has been permanently banned for violating "
-                "community guidelines."
-            )
-        elif user.suspended_until and user.suspended_until > timezone.now():
-            local_time = timezone.localtime(user.suspended_until)
-            block_message = (
-                "Your account is suspended until "
-                f"{local_time.strftime('%B %d, %Y at %H:%M')} "
-                "for violating community guidelines."
-            )
+        block_message = get_block_message(user, timezone.now())
+
+        # Only unverified users go through the domain check — an
+        # already-verified user's domain was already checked once and
+        # shouldn't be re-blocked on a later login even if the domain
+        # pattern list changes in the meantime.
+        if not block_message and not user.is_verified:
+            block_message = get_verification_block_message(user.email)
 
         if block_message:
             return render(request, 'accounts/index.html', {
                 'form': form,
                 'block_message': block_message,
             })
+
+        if not user.is_verified:
+            complete_verification(user)
+            # Consumed once by whichever page renders next (profile
+            # setup or profile) to show the one-time "Verified" modal.
+            request.session['show_verified_notice'] = True
 
         login(request, user)
 
