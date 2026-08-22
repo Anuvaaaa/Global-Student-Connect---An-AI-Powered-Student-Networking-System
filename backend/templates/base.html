@@ -131,6 +131,7 @@
       <div class="assistant-messages" id="assistantMessages"></div>
     </div>
 
+    {% csrf_token %}
     <div class="assistant-input-row">
       <input
         type="text"
@@ -228,20 +229,63 @@
 
     // -------------------------------------------------------
     // PLATFORM ASSISTANT
-    // Each page defines its own `answers` object before this
-    // script runs (see block extra_js)
+    // Talks to the real ai_agents:ask_assistant endpoint. thread_id is
+    // kept in localStorage (not a page-level JS variable) specifically
+    // so the conversation survives navigating from one page to another
+    // — a plain variable would reset on every page load.
     // -------------------------------------------------------
+    const ASSISTANT_THREAD_KEY = 'gsc_assistant_thread_id';
+    let assistantHistoryLoaded = false;
+
+    function getCookie(name) {
+      const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? match.pop() : null;
+    }
+
     function toggleAssistant() {
-      document.getElementById('assistantPanel').classList.toggle('open');
+      const panel = document.getElementById('assistantPanel');
+      panel.classList.toggle('open');
+
+      // Only fires once per page load, and only if there's an existing
+      // thread to restore — a brand-new visitor with no thread_id yet
+      // shouldn't trigger a history fetch that will just come back empty.
+      if (panel.classList.contains('open') && !assistantHistoryLoaded) {
+        assistantHistoryLoaded = true;
+        loadAssistantHistory();
+      }
+    }
+
+    function loadAssistantHistory() {
+      const threadId = localStorage.getItem(ASSISTANT_THREAD_KEY);
+      if (!threadId) return;
+
+      const historyUrl = "{% url 'ai_agents:thread_history' 999999999 %}".replace('999999999', threadId);
+
+      fetch(historyUrl)
+        .then(response => response.json())
+        .then(data => {
+          (data.messages || []).forEach(m => {
+            addMessage(m.text, m.role === 'user' ? 'user' : 'bot');
+          });
+          // addMessage() already scrolls after each call, but while the
+          // panel is still mid-open (CSS transition), scrollHeight gets
+          // measured before layout settles — same timing issue
+          // chat_base.html's scrollToBottom() already works around.
+          setTimeout(() => {
+            const messages = document.getElementById('assistantMessages');
+            messages.scrollTop = messages.scrollHeight;
+          }, 50);
+        })
+        .catch(() => {
+          // Silent failure on purpose — this is a nice-to-have restore,
+          // not a blocker. Worst case the panel just opens empty, same
+          // as it always did before this existed.
+        });
     }
 
     function askQuestion(question) {
       addMessage(question, 'user');
-      setTimeout(() => {
-        const reply = (typeof answers !== 'undefined' && answers[question])
-          || "Try asking about matching, translation, badges, or groups!";
-        addMessage(reply, 'bot');
-      }, 600);
+      sendToAssistant(question);
     }
 
     function sendQuestion() {
@@ -250,9 +294,33 @@
       if (!text) return;
       addMessage(text, 'user');
       input.value = '';
-      setTimeout(() => {
-        addMessage("In the full platform, our AI assistant would answer this in detail. 🤖", 'bot');
-      }, 600);
+      sendToAssistant(text);
+    }
+
+    function sendToAssistant(question) {
+      const body = new URLSearchParams({
+        question: question,
+        thread_id: localStorage.getItem(ASSISTANT_THREAD_KEY) || '',
+      });
+
+      fetch("{% url 'ai_agents:ask_assistant' %}", {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body,
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.thread_id) {
+            localStorage.setItem(ASSISTANT_THREAD_KEY, data.thread_id);
+          }
+          addMessage(data.answer || "Sorry, something went wrong on my end.", 'bot');
+        })
+        .catch(() => {
+          addMessage("Couldn't reach the assistant right now — try again in a moment.", 'bot');
+        });
     }
 
     function addMessage(text, sender) {
