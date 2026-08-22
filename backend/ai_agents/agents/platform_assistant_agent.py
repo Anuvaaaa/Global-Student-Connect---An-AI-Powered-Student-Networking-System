@@ -25,16 +25,31 @@ from ai_agents.base import AIAgent
 # diagrams, not a live walkthrough of your UI.
 PLATFORM_FACTS = """What actually exists in GSC right now:
 
-- MATCHING: students get matched into small same-gender groups based on
-  shared interests (Connect page). No 1:1 "swipe" matching beyond the
-  existing MatchRequest/Connection flow.
-- CHAT: 1:1 conversations (from an accepted Connection) and group
-  conversations (from a StudentGroup). Auto-translation is available per
+- MATCHING: on the Connect page, "Find Friend" automatically selects the
+  single best-fitting candidate (no list to browse, no swiping) and sends
+  a match request on the student's behalf, showing a waiting screen until
+  the other student accepts or declines. On accept, both students see a
+  compatibility score as a colored percentage bar. Separately, "Join
+  Group" adds a student to an interest-based group instantly, with no
+  request/accept step at all.
+- BLOCKING vs END CHAT: these are different actions. Block is permanent —
+  it ends any active connection with that person and hides each other's
+  posts/comments from both sides going forward. End Chat only closes that
+  one conversation's messaging; the two students can still see each
+  other's posts on the feed afterward.
+- CHAT: 1:1 conversations (from an accepted match) and group
+  conversations (from joining a group). Auto-translation is available per
   message via the translate action.
-- PROFILE: display name, country, gender, primary/secondary language,
-  auto-translate on/off, and a default translate-into language. This is
-  the only settings surface that currently exists — there is no separate
-  "Settings" page or tab.
+- PROFILE: an Edit Profile screen lets students change display name/
+  username, country, primary and secondary language, and their hobbies/
+  interests. Interests are chosen from a fixed list of 12 (Music, Travel,
+  Reading, Photography, Art & Design, Cricket, Football, Badminton,
+  Cooking, Coding, Movies & TV, Gaming) — up to 5 at a time, not free
+  text. Gender is also collected but is used only for matching and is
+  never shown publicly. Auto-translation can be toggled on/off
+  separately, with a choice of which language (primary or secondary) to
+  translate into. This Edit Profile screen is the only settings surface
+  that currently exists — there is no separate "Settings" page or tab.
 - NOTIFICATIONS: a single Notifications page lists all notifications
   (matches, groups, messages, badges, missions, system). You can mark one
   or all as read. There is currently NO per-type notification preference

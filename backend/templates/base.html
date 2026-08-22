@@ -124,7 +124,7 @@
       </button>
     </div>
 
-    <div class="assistant-body">
+    <div class="assistant-body" id="assistantBody">
       {% block assistant_body %}
       <p class="assistant-intro">Hi! Ask me anything about the platform 👋</p>
       {% endblock %}
@@ -267,14 +267,13 @@
           (data.messages || []).forEach(m => {
             addMessage(m.text, m.role === 'user' ? 'user' : 'bot');
           });
-          // addMessage() already scrolls after each call, but while the
-          // panel is still mid-open (CSS transition), scrollHeight gets
-          // measured before layout settles — same timing issue
-          // chat_base.html's scrollToBottom() already works around.
-          setTimeout(() => {
-            const messages = document.getElementById('assistantMessages');
-            messages.scrollTop = messages.scrollHeight;
-          }, 50);
+          // .assistant-body is the real scrollable element (overflow-y:
+          // auto is set there, not on #assistantMessages), and it's
+          // never display:none — opacity/transform only — so layout is
+          // always current; no artificial delay needed once we're
+          // scrolling the right element.
+          const body = document.getElementById('assistantBody');
+          body.scrollTop = body.scrollHeight;
         })
         .catch(() => {
           // Silent failure on purpose — this is a nice-to-have restore,
@@ -329,7 +328,8 @@
       msg.className = 'assistant-msg ' + sender;
       msg.textContent = text;
       messages.appendChild(msg);
-      messages.scrollTop = messages.scrollHeight;
+      const body = document.getElementById('assistantBody');
+      body.scrollTop = body.scrollHeight;
     }
 
   </script>
