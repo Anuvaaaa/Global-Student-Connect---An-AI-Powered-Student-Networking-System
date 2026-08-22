@@ -42,6 +42,20 @@ TIER_ORDER = {'bronze': 0, 'silver': 1, 'gold': 2}
 NUDGE_THRESHOLD_PCT = 70
 
 
+def _progress_pct(current_value, target):
+    """
+    Percentage (0-100) toward a target, capped at 100. Target of 0/None
+    returns 0 instead of raising ZeroDivisionError. Pulled out of
+    check_and_award_badges / get_badge_progress / record_mission_progress /
+    get_mission_progress, which all did this same calculation inline —
+    kept as one function so it's unit-testable in isolation and only
+    needs fixing in one place if the rounding behavior ever changes.
+    """
+    if not target:
+        return 0
+    return min(int(current_value / target * 100), 100)
+
+
 def check_and_award_badges(user):
     """
     Call this after any action that could cross a badge threshold —
@@ -91,7 +105,7 @@ def check_and_award_badges(user):
             badge_earned.send(sender=Badge, user=user, badge=badge)
             newly_earned.append(badge)
         elif badge.threshold:
-            progress_pct = min(int(current_value / badge.threshold * 100), 100)
+            progress_pct = _progress_pct(current_value, badge.threshold)
             if progress_pct >= NUDGE_THRESHOLD_PCT:
                 badge_progress_updated.send(
                     sender=Badge, user=user, badge=badge, progress_pct=progress_pct,
@@ -142,7 +156,7 @@ def get_badge_progress(user):
         current_value = getattr(engagement, field_name, 0) if (engagement and field_name) else 0
 
         target = next_tier.threshold if next_tier else (highest_earned.threshold if highest_earned else 1)
-        pct = min(int(current_value / target * 100), 100) if target else 0
+        pct = _progress_pct(current_value, target)
 
         result.append({
             'badge_group': group_key,
@@ -220,7 +234,7 @@ def record_mission_progress(user, mission_key, amount=1):
     if just_completed:
         mission_completed.send(sender=Mission, user=user, mission=mission)
     elif mission.target:
-        progress_pct = min(int(progress_row.progress / mission.target * 100), 100)
+        progress_pct = _progress_pct(progress_row.progress, mission.target)
         mission_progress_updated.send(
             sender=Mission, user=user, mission=mission, progress_pct=progress_pct,
         )
@@ -243,7 +257,7 @@ def get_mission_progress(user):
             user=user, mission=mission, period_start=period_start,
             defaults={'progress': 0},
         )
-        pct = min(int(progress_row.progress / mission.target * 100), 100) if mission.target else 0
+        pct = _progress_pct(progress_row.progress, mission.target)
 
         result.append({
             'mission': mission,
