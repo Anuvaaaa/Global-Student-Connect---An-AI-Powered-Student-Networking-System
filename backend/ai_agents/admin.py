@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 
 from .models import NudgeLog, SafetyFlag
+from .models import AssistantMessage, AssistantThread, NudgeLog, SafetyFlag
 
 
 @admin.register(SafetyFlag)
@@ -51,6 +52,8 @@ class SafetyFlagAdmin(admin.ModelAdmin):
             )
         return "Active"
     user_status.short_description = "Account Status"
+
+    
 
     @admin.action(description="Suspend selected users for 7 days")
     def suspend_flagged_users(self, request, queryset):
@@ -120,3 +123,19 @@ class NudgeLogAdmin(admin.ModelAdmin):
         # nudge actually having been sent, so this is read-only, same
         # spirit as SafetyFlag's readonly_fields but for the whole model.
         return False
+
+class AssistantMessageInline(admin.TabularInline):
+    model = AssistantMessage
+    extra = 0
+    readonly_fields = ('role', 'text', 'is_fallback', 'created_at')
+    can_delete = False
+
+
+@admin.register(AssistantThread)
+class AssistantThreadAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'title', 'created_at', 'last_message_at', 'message_count')
+    inlines = [AssistantMessageInline]
+
+    def message_count(self, obj):
+        return obj.messages.count()
+    message_count.short_description = "Messages"

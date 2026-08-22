@@ -191,6 +191,10 @@ class AssistantMessage(models.Model):
     )
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
     text = models.TextField()
+    # NEW — added to support the Platform Assistant's fallback UX, mirroring
+    # MessageTranslation.is_fallback. True when this row is the casual
+    # apology text shown because Gemini failed, not a real answer.
+    is_fallback = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
