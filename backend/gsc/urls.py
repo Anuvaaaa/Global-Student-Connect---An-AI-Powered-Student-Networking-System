@@ -6,9 +6,10 @@ urlpatterns = [
 
     path('', include('accounts.urls')),          # login (root), setup/, profile/
     path('', include('engagement.urls')),         # notifications/
-    path('', include('social.urls')),              # home feed — ⚠️ see note below
+    path('', include('social.urls')),              # home feed 
 
     path('connect/', include('matching.urls')),   # matching app — real
     path('chat/', include('chat.urls')),           # chat app — real
     path('moderation/', include('moderation.urls')),  # NEW — report_user endpoint
+    path('assistant/', include('ai_agents.urls')),    # NEW — platform assistant chat
 ]
