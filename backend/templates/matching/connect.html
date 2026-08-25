@@ -18,7 +18,7 @@
   }
   .incoming-highlight {
     animation: incomingHighlightBounce 0.9s ease 3;
-    box-shadow: 0 0 0 6px rgba(61,47,217,0.18);
+    box-shadow: 0 0 0 6px rgba(14,124,144,0.28);
   }
 </style>
 {% endblock %}
@@ -238,7 +238,7 @@
 
       <div class="waiting-timer" id="waitingTimerDisplay">0s</div>
 
-      <button type="button" class="cancel-btn" id="dismissWaitingBtn" onclick="dismissWaiting()" style="background:#3d2fd9;color:white;margin-bottom:8px;">
+      <button type="button" class="cancel-btn" id="dismissWaitingBtn" onclick="dismissWaiting()" style="background:var(--clay);color:white;margin-bottom:8px;">
         Explore other features while waiting
       </button>
       <button type="button" class="cancel-btn" id="cancelBtn" onclick="cancelRequest()">
@@ -325,7 +325,7 @@
 
       <div class="waiting-timer" id="groupWaitingTimerDisplay">0s</div>
 
-      <button type="button" class="cancel-btn" id="dismissGroupWaitingBtn" onclick="dismissGroupWaiting()" style="background:#f5a623;color:white;margin-bottom:8px;">
+      <button type="button" class="cancel-btn" id="dismissGroupWaitingBtn" onclick="dismissGroupWaiting()" style="background:var(--uni-blue);color:white;margin-bottom:8px;">
         Explore other features while waiting
       </button>
       <button type="button" class="cancel-btn" id="cancelGroupWaitBtn" onclick="cancelGroupWait()">

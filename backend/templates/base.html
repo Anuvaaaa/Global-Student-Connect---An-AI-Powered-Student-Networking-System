@@ -6,8 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Global Student Connect{% block title_suffix %}{% endblock %}</title>
 
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Google Fonts — teal/amber redesign uses Inter everywhere.
+       Plus Jakarta Sans kept loaded too since pages not yet migrated
+       to the redesign (chat, notifications, profile) still reference
+       it in their own CSS. -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <!-- Phosphor Icons via jsDelivr — version locked at 2.1.1 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" />

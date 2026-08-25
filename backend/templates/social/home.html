@@ -35,9 +35,9 @@
     font-size: 14px;
     line-height: 1.4;
     background: #ffffff;
-    border: 1px solid #e8e6ff;
-    color: #1e1560;
-    box-shadow: 0 4px 16px rgba(30, 21, 96, 0.12);
+    border: 1px solid #DCEBE0;
+    color: #16241C;
+    box-shadow: 0 4px 16px rgba(22, 36, 28, 0.12);
     animation: gsc-message-in 0.25s ease-out;
   }
   .gsc-message i {
@@ -56,7 +56,7 @@
     border-color: #f5e0a3;
     color: #6b4f00;
   }
-  .gsc-message-info i { color: #f5a623; }
+  .gsc-message-info i { color: #CC9900; }
   .gsc-message-success {
     background: #eafaf0;
     border-color: #bfe8cf;
@@ -108,6 +108,205 @@
   @keyframes post-btn-wiggle-scroll {
     from { transform: translateX(0); }
     to { transform: translateX(-15px); }
+  }
+
+  /* -----------------------------------------------------------
+     BREATHING EXERCISE — UI-only feature, no backend/DB involved.
+     Three pieces:
+       1. .breathe-btn        — corner trigger (stacks above the
+                                 robot FAB on desktop, sits beside
+                                 the topbar bell on mobile)
+       2. .notebook-*         — sharp-edged, lined-paper intro
+                                 popup shown once per session
+       3. .breathe-*          — rounded 4-7-8 animated exercise
+                                 modal + end screen
+  ----------------------------------------------------------- */
+
+  /* 1. CORNER TRIGGER BUTTON */
+  .breathe-btn {
+    position: fixed;
+    bottom: 90px;
+    right: 28px;
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: var(--clay);
+    border: none;
+    color: white;
+    font-size: 19px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 18px rgba(22,163,74,0.45);
+    cursor: pointer;
+    z-index: 200;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .breathe-btn:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(22,163,74,0.55); }
+
+  @media (max-width: 768px) {
+    .breathe-btn {
+      position: fixed;
+      bottom: auto;
+      top: 25px; /* center of the ~50px-tall mobile topbar */
+      transform: translateY(-50%);
+      right: 58px; /* sits just left of the topbar bell */
+      width: 34px; height: 34px;
+      background: transparent;
+      color: rgba(245,244,237,0.7);
+      font-size: 20px;
+      line-height: 1;
+      box-shadow: none;
+      z-index: 150; /* comfortably above .mobile-topbar (z-index 100) */
+    }
+    .breathe-btn:hover { color: var(--clay); transform: translateY(-50%); box-shadow: none; }
+    .breathe-btn i { line-height: 1; }
+  }
+
+  /* 2. NOTEBOOK-STYLE INTRO POPUP */
+  .notebook-overlay {
+    display: none;
+    position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(31,27,23,0.5);
+    z-index: 310;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+
+  .notebook-modal {
+    position: relative;
+    width: 100%;
+    max-width: 270px;
+    background-color: var(--card);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent, transparent 27px,
+      var(--line) 28px
+    );
+    border: 1px solid var(--line);
+    border-radius: 0; /* sharp corners, deliberately unlike other modals */
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    padding: 34px 22px 30px 34px;
+  }
+
+  .notebook-modal::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 22px;
+    width: 1px;
+    background: rgba(239,68,68,0.32); /* faint notebook margin line */
+  }
+
+  .notebook-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--ink);
+    line-height: 28px;
+    margin-bottom: 0;
+  }
+
+  .notebook-text {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text);
+    line-height: 28px;
+  }
+
+  .notebook-actions {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 12px;
+    line-height: 28px;
+  }
+
+  .highlight-btn {
+    position: relative;
+    background: none;
+    border: none;
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
+    cursor: pointer;
+    padding: 2px 8px;
+    z-index: 1;
+  }
+
+  .highlight-btn::before {
+    content: '';
+    position: absolute;
+    left: -5px; right: -5px; top: 40%; bottom: 6%;
+    z-index: -1;
+    transform: rotate(-1.3deg);
+    border-radius: 4px 9px 4px 9px / 9px 4px 9px 4px;
+    opacity: 0.85;
+  }
+
+  .highlight-btn.start::before { background: var(--clay-soft); }
+  .highlight-btn.later::before { background: var(--amber-soft); transform: rotate(1deg); }
+
+  /* 3. BREATHING EXERCISE MODAL (rounded — reuses .modal-overlay/.modal) */
+  .breathe-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0 4px;
+  }
+
+  .breathe-round {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-soft);
+    margin-bottom: 18px;
+  }
+
+  .breathe-circle-wrap {
+    width: 180px; height: 180px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  .breathe-circle {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: var(--clay-soft);
+    border: 2px solid var(--clay);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    transform: scale(1);
+    transition: transform 4s ease-in-out;
+  }
+
+  .breathe-phase {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--clay-dark);
+  }
+
+  .breathe-count {
+    font-family: var(--font-body);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-top: 2px;
+  }
+
+  .breathe-done {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0 6px;
+    text-align: center;
+  }
+
+  .breathe-done-emoji { font-size: 34px; margin-bottom: 10px; }
+
+  .breathe-done-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--ink);
+    margin-bottom: 18px;
   }
 </style>
 {% endblock %}
@@ -303,6 +502,12 @@
 
   </div>
 </main>
+
+<!-- BREATHING EXERCISE — corner trigger. Stacks above the robot FAB
+     on desktop, sits beside the topbar bell on mobile (see CSS). -->
+<button type="button" class="breathe-btn" onclick="openNotebookModal()" aria-label="Breathing exercise">
+  <i class="ph-bold ph-leaf"></i>
+</button>
 {% endblock %}
 
 {% block modals %}
@@ -340,6 +545,57 @@
         Post Moment
       </button>
     </form>
+
+  </div>
+</div>
+
+<!-- =====================================================================
+     BREATHING EXERCISE — NOTEBOOK INTRO POPUP
+     Shown once per session (sessionStorage-gated in JS below), so it
+     reappears on a fresh login but not on every page refresh.
+===================================================================== -->
+<div class="notebook-overlay" id="notebookOverlay">
+  <div class="notebook-modal">
+    <div class="notebook-title">Hey friend! 🌿</div>
+    <div class="notebook-text">
+      Want to do a quick breathing exercise before making new connections?
+    </div>
+    <div class="notebook-actions" style="margin-top: 20px;">
+      <button type="button" class="highlight-btn start" onclick="startFromNotebook()">Start</button>
+      <button type="button" class="highlight-btn later" onclick="closeNotebookModal()">Maybe later</button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================================
+     BREATHING EXERCISE — 4-7-8 MODAL
+     Purely client-side animation/timer, no backend involved.
+===================================================================== -->
+<div class="modal-overlay" id="breatheOverlay">
+  <div class="modal" style="max-width: 340px;">
+
+    <div class="modal-header">
+      <div class="modal-title">4-7-8 Breathing</div>
+      <button type="button" class="modal-close" onclick="closeBreatheModal()" aria-label="Close">
+        <i class="ph-bold ph-x"></i>
+      </button>
+    </div>
+
+    <div class="breathe-body" id="breatheBody">
+      <div class="breathe-round" id="breatheRound">Round 1 of 3</div>
+      <div class="breathe-circle-wrap">
+        <div class="breathe-circle" id="breatheCircle">
+          <div class="breathe-phase" id="breathePhase">Ready</div>
+          <div class="breathe-count" id="breatheCount">–</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="breathe-done" id="breatheDone">
+      <div class="breathe-done-emoji">🌿</div>
+      <div class="breathe-done-title">Great job!</div>
+      <button type="button" class="modal-post-btn" style="width: auto; padding: 11px 28px;" onclick="closeBreatheModal()">Done</button>
+    </div>
 
   </div>
 </div>
@@ -517,6 +773,123 @@
     'What is group matching?':
       'Group matching places you into a small discussion group with compatible students. Go to Connect and tap "Join Group"! 👥'
   };
+
+  // -------------------------------------------------------
+  // BREATHING EXERCISE — UI-only, no backend/DB.
+  // -------------------------------------------------------
+
+  // ---- Notebook intro popup: auto-shown once per session ----
+  // The auto-show flag is set the moment it's shown automatically
+  // (not on Start/Maybe later), so a refresh never re-triggers it,
+  // but logging out and back in does (see login-page script).
+  // The leaf button below always calls openNotebookModal() directly,
+  // regardless of the flag, so pressing it manually always works.
+  function openNotebookModal() {
+    document.getElementById('notebookOverlay').style.display = 'flex';
+  }
+
+  (function () {
+    if (!sessionStorage.getItem('gsc_breathe_intro_seen')) {
+      sessionStorage.setItem('gsc_breathe_intro_seen', '1');
+      openNotebookModal();
+    }
+  })();
+
+  function closeNotebookModal() {
+    document.getElementById('notebookOverlay').style.display = 'none';
+  }
+
+  function startFromNotebook() {
+    closeNotebookModal();
+    openBreatheModal();
+  }
+
+  // ---- 4-7-8 timer/animation engine ----
+  const BREATHE_PHASES = [
+    { name: 'Inhale', seconds: 4, scale: 1.5 },
+    { name: 'Hold',   seconds: 7, scale: 1.5 },
+    { name: 'Exhale', seconds: 8, scale: 1 }
+  ];
+  const BREATHE_ROUNDS = 3;
+
+  let breatheRoundNum = 1;
+  let breathePhaseIdx = 0;
+  let breatheCountdown = 0;
+  let breatheTickTimer = null;
+  let breathePhaseTimer = null;
+
+  function openBreatheModal() {
+    // Reset to a clean first-round state every time it's opened,
+    // whether from the notebook popup or the corner button.
+    breatheRoundNum = 1;
+    breathePhaseIdx = 0;
+    document.getElementById('breatheBody').style.display = 'flex';
+    document.getElementById('breatheDone').style.display = 'none';
+    document.getElementById('breatheCircle').style.transform = 'scale(1)';
+    document.getElementById('breathePhase').textContent = 'Ready';
+    document.getElementById('breatheCount').textContent = '–';
+    document.getElementById('breatheRound').textContent = 'Round 1 of ' + BREATHE_ROUNDS;
+    document.getElementById('breatheOverlay').style.display = 'flex';
+
+    // Small delay so the modal is visible before the first
+    // transform transition kicks in (otherwise the browser can
+    // skip straight to the end state with no visible animation).
+    setTimeout(runBreathePhase, 300);
+  }
+
+  function closeBreatheModal() {
+    clearTimeout(breathePhaseTimer);
+    clearInterval(breatheTickTimer);
+    document.getElementById('breatheOverlay').style.display = 'none';
+  }
+
+  function runBreathePhase() {
+    const phase = BREATHE_PHASES[breathePhaseIdx];
+    const circle = document.getElementById('breatheCircle');
+
+    document.getElementById('breatheRound').textContent =
+      'Round ' + breatheRoundNum + ' of ' + BREATHE_ROUNDS;
+    document.getElementById('breathePhase').textContent = phase.name;
+
+    circle.style.transition = 'transform ' + phase.seconds + 's ease-in-out';
+    circle.style.transform = 'scale(' + phase.scale + ')';
+
+    breatheCountdown = phase.seconds;
+    document.getElementById('breatheCount').textContent = breatheCountdown;
+    clearInterval(breatheTickTimer);
+    breatheTickTimer = setInterval(function () {
+      breatheCountdown -= 1;
+      if (breatheCountdown > 0) {
+        document.getElementById('breatheCount').textContent = breatheCountdown;
+      }
+    }, 1000);
+
+    clearTimeout(breathePhaseTimer);
+    breathePhaseTimer = setTimeout(function () {
+      clearInterval(breatheTickTimer);
+      breathePhaseIdx += 1;
+
+      if (breathePhaseIdx >= BREATHE_PHASES.length) {
+        breathePhaseIdx = 0;
+        breatheRoundNum += 1;
+      }
+
+      if (breatheRoundNum > BREATHE_ROUNDS) {
+        showBreatheDone();
+      } else {
+        runBreathePhase();
+      }
+    }, phase.seconds * 1000);
+  }
+
+  function showBreatheDone() {
+    document.getElementById('breatheBody').style.display = 'none';
+    document.getElementById('breatheDone').style.display = 'flex';
+  }
+
+  document.getElementById('breatheOverlay').addEventListener('click', function (e) {
+    if (e.target === this) closeBreatheModal();
+  });
 
 </script>
 {% endblock %}
