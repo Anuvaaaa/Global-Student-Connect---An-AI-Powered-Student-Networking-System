@@ -29,6 +29,7 @@ a fake countdown.
 
 import json
 from collections import Counter
+from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -82,9 +83,13 @@ def _get_todays_stats():
     """
     from collections import Counter
 
-    today = timezone.localdate()
+    now_local = timezone.localtime(timezone.now())
+    start_of_day = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
 
-    todays_connections = list(Connection.objects.filter(created_at__date=today))
+    todays_connections = list(Connection.objects.filter(
+        created_at__gte=start_of_day, created_at__lt=end_of_day
+    ))
 
     # --- students connected today: distinct users touched by a new Connection ---
     connected_user_ids = set()
@@ -94,7 +99,9 @@ def _get_todays_stats():
     students_connected_today = len(connected_user_ids)
 
     # --- average match time: accepted requests resolved today ---
-    resolved_today = MatchRequest.objects.filter(status="accepted", resolved_at__date=today)
+    resolved_today = MatchRequest.objects.filter(
+        status="accepted", resolved_at__gte=start_of_day, resolved_at__lt=end_of_day
+    )
     avg_seconds = None
     if resolved_today.exists():
         deltas = [(mr.resolved_at - mr.created_at).total_seconds() for mr in resolved_today]
