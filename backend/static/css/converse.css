@@ -19,7 +19,7 @@
 
 /* ============================================================
    1. CHAT HEADER
-   Fixed at top — dark indigo bar with back, name, more
+   Fixed at top — dark ink bar with back, name, more
 ============================================================ */
 
 
@@ -33,7 +33,13 @@
 
 .chat-person:hover { background: rgba(255,255,255,0.08); }
 
-.chat-person-flag { font-size: 28px; flex-shrink: 0; }
+.chat-person-flag {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--clay), var(--clay-dark));
+  border-radius: 50%;
+  font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.3px;
+}
 
 .chat-person-name { font-size: 15px; font-weight: 700; color: white; }
 
@@ -43,10 +49,10 @@
   font-size: 11px; color: rgba(255,255,255,0.5);
 }
 
-/* Green dot */
+/* Green dot — universal "online now" convention */
 .status-dot {
   width: 7px; height: 7px;
-  background: #22c55e; border-radius: 50%; flex-shrink: 0;
+  background: var(--clay); border-radius: 50%; flex-shrink: 0;
 }
 
 
@@ -57,15 +63,15 @@
 
 /* shared base in shared-chat.css; this page overrides: color */
 .report-item {
-  color: #f59e0b;
+  color: var(--amber-dark);
 }
 /* shared base in shared-chat.css; this page overrides: color */
 .report-item i {
-  color: #f59e0b;
+  color: var(--amber-dark);
 }
 
-.block-item { color: #ef4444; }
-.block-item i { color: #ef4444; }
+.block-item { color: var(--alert-red); }
+.block-item i { color: var(--alert-red); }
 
 
 /* ============================================================
@@ -96,7 +102,7 @@
 
 /* shared base in shared-chat.css; this page overrides: background */
 .messages-area::-webkit-scrollbar-thumb {
-  background: #352e88;
+  background: var(--clay-dark);
 }
 
 /* When banner is hidden — messages start at 64px */
@@ -135,16 +141,22 @@
 /* Person flag, name, subtitle at top of modal */
 .profile-modal-top {
   text-align: center; padding: 8px 0 20px;
-  border-bottom: 1px solid #f0effe; margin-bottom: 16px;
+  border-bottom: 1px solid var(--line); margin-bottom: 16px;
 }
 
-.profile-modal-flag { font-size: 48px; margin-bottom: 10px; }
+.profile-modal-flag {
+  display: flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px; margin: 0 auto 10px;
+  background: linear-gradient(135deg, var(--clay), var(--clay-dark));
+  border-radius: 50%;
+  font-size: 18px; font-weight: 700; color: white; letter-spacing: 0.3px;
+}
 
 .profile-modal-name {
-  font-size: 18px; font-weight: 800; color: #1e1560; margin-bottom: 4px;
+  font-size: 18px; font-weight: 600; font-family: var(--font-display); color: var(--ink); margin-bottom: 4px;
 }
 
-.profile-modal-sub { font-size: 12px; color: #aaa; }
+.profile-modal-sub { font-size: 12px; color: var(--text-faint); }
 
 /* Details list */
 .profile-modal-details {
@@ -156,15 +168,15 @@
 }
 
 .profile-detail-item i {
-  font-size: 18px; color: #3d2fd9; flex-shrink: 0; margin-top: 2px;
+  font-size: 18px; color: var(--clay); flex-shrink: 0; margin-top: 2px;
 }
 
 .detail-label {
-  font-size: 11px; font-weight: 700; color: #aaa;
+  font-size: 11px; font-weight: 700; color: var(--text-faint);
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
 }
 
-.detail-value { font-size: 14px; font-weight: 600; color: #1e1560; }
+.detail-value { font-size: 14px; font-weight: 600; color: var(--ink); }
 
 /* Interest tags inside modal */
 .detail-interests { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
@@ -175,24 +187,26 @@
   padding: 4px 10px;
 }
 
-/* Mini compatibility bar */
+/* Mini compatibility bar — same blue→gold multicolor treatment
+   as Connect's main compatibility bar and Profile's progress
+   bars, for consistency wherever a "how much" metric is shown */
 .compatibility-bar-wrap {
   display: flex; align-items: center; gap: 10px; margin-top: 4px;
 }
 
 .mini-compat-bar {
-  flex: 1; height: 6px; background: #f0effe;
+  flex: 1; height: 6px; background: var(--line);
   border-radius: 3px; overflow: hidden;
 }
 
 .mini-compat-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3d2fd9, #f5a623);
+  background: linear-gradient(90deg, var(--uni-blue), var(--amber));
   border-radius: 3px; transition: width 0.8s ease;
 }
 
 .mini-compat-score {
-  font-size: 13px; font-weight: 700; color: #3d2fd9; white-space: nowrap;
+  font-size: 13px; font-weight: 700; color: var(--clay-dark); white-space: nowrap;
 }
 
 
@@ -208,24 +222,24 @@
 
 
 .block-confirm-btn {
-  width: 100%; padding: 12px; background: #ef4444; color: white;
+  width: 100%; padding: 12px; background: var(--alert-red); color: white;
   font-size: 14px; font-weight: 700;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   border: none; border-radius: 12px; cursor: pointer;
   transition: background 0.2s ease;
 }
 
-.block-confirm-btn:hover { background: #dc2626; }
+.block-confirm-btn:hover { background: var(--alert-dark); }
 
 .end-confirm-btn {
-  width: 100%; padding: 12px; background: #1e1560; color: white;
+  width: 100%; padding: 12px; background: var(--ink); color: white;
   font-size: 14px; font-weight: 700;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   border: none; border-radius: 12px; cursor: pointer;
   transition: background 0.2s ease;
 }
 
-.end-confirm-btn:hover { background: #160f4a; }
+.end-confirm-btn:hover { background: #0D1712; }
 
 
 /* ============================================================

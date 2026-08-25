@@ -2,6 +2,15 @@
    GLOBAL STUDENT CONNECT — styles.css
    Landing / Sign-in Page Styles
 
+   Palette switched to university green (--clay) + blue
+   (--uni-blue) to match the school's official colors. Amber is
+   now reserved for attention/highlight states, not a main CTA
+   color. Dev username/password sign-in form is unchanged
+   structurally — only recolored to match. Ruled-paper background
+   kept on this page only — it has open space for the texture to
+   read, unlike the denser feed/connect pages. Globe emoji is
+   back in the brand logo per request (was briefly an SVG icon).
+
    TABLE OF CONTENTS:
    1. Reset & Base Styles
    2. Page Layout
@@ -11,12 +20,37 @@
    6. Google Button
    7. Small text & notes
    8. Mobile Responsive
+   9. Login Form
 ============================================================ */
 
 
 /* ============================================================
    1. RESET & BASE STYLES
 ============================================================ */
+
+:root {
+  --paper: #EFF6F7;
+  --paper-soft: #F1F8F5;
+  --ink: #16241C;
+  --clay: #16A34A;
+  --clay-dark: #0F7D38;
+  --clay-soft: #DBF3E3;
+  --clay-soft-border: #A9DDD0;
+  --amber: #CC9900;
+  --amber-dark: #A67D00;
+  --amber-soft: #F7ECC9;
+  --uni-blue: #0E7C90;
+  --uni-blue-dark: #0B5F70;
+  --uni-blue-soft: #D6EEF2;
+  --line: #DCEBE0;
+  --card: #FFFFFF;
+  --text: #16241C;
+  --text-soft: #55655A;
+  --text-faint: #B3AEA1;
+  --font-display: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+}
 
 * {
   margin: 0;
@@ -25,9 +59,9 @@
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   min-height: 100vh;
-  background-color: #f8f7ff;
+  background-color: var(--paper);
 }
 
 
@@ -49,7 +83,7 @@ body {
 
 .brand-panel {
   flex: 1.1;
-  background: #1e1560;
+  background: var(--ink);
   padding: 60px 50px;
   display: flex;
   flex-direction: column;
@@ -61,44 +95,43 @@ body {
 /* Platform wordmark */
 .brand-logo {
   font-size: 15px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.55);
-  letter-spacing: 0.5px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  color: rgba(246,251,249,0.7);
+  letter-spacing: 0.3px;
   margin-bottom: 48px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  position: relative;
+  z-index: 2;
 }
 
-/* Prototype v1.0 badge under the wordmark */
-.prototype-badge {
-  display: block;
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.35);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-top: 4px;
-}
 
 /* Big headline */
 .brand-headline {
   font-size: 38px;
-  font-weight: 800;
-  color: #ffffff;
-  line-height: 1.2;
+  font-weight: 600;
+  font-family: var(--font-display);
+  color: #E9F5F0;
+  line-height: 1.25;
   margin-bottom: 20px;
   position: relative;
   z-index: 2;
 }
 
-/* Amber highlighted words */
+/* Accent-colored highlighted words */
 .highlight {
-  color: #f5a623;
+  color: var(--clay);
+  font-weight: 800;
 }
 
 /* Description paragraph */
 .brand-description {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.5);
-  line-height: 1.7;
+  font-size: 14px;
+  font-family: var(--font-body);
+  color: rgba(246,251,249,0.5);
+  line-height: 1.75;
   max-width: 340px;
   margin-bottom: 48px;
   position: relative;
@@ -124,7 +157,7 @@ body {
   font-size: 20px;
   width: 36px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(246,251,249,0.08);
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -133,32 +166,17 @@ body {
 }
 
 .feature-text {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  font-family: var(--font-body);
+  color: rgba(246,251,249,0.7);
 }
 
-/* Decorative blobs — visual only, no content */
+/* Decorative blobs — removed in the notebook redesign in favor of
+   a flat ink panel; rules kept (harmless) in case markup still
+   references them elsewhere, just hidden here. */
 .blob {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.blob-1 {
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, rgba(61, 47, 217, 0.5), transparent 70%);
-  bottom: -100px;
-  right: -80px;
-}
-
-.blob-2 {
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(circle, rgba(245, 166, 35, 0.12), transparent 70%);
-  top: 40px;
-  right: 30px;
+  display: none;
 }
 
 
@@ -169,7 +187,12 @@ body {
 
 .signin-panel {
   flex: 1;
-  background: #f8f7ff;
+  background-color: var(--paper-soft);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='34'%3E%3Cline x1='0' y1='33' x2='60' y2='33' stroke='%23234A38' stroke-width='1' stroke-dasharray='2,3' opacity='0.35'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 600px 380px at 85% -8%, rgba(22,163,74,0.10), transparent 60%);
+  background-size: 60px 34px, 100% 100%;
+  background-repeat: repeat, no-repeat;
   display: flex;
   align-items: center;       /* Vertically center the content */
   justify-content: center;   /* Horizontally center the content */
@@ -188,23 +211,26 @@ body {
 
 /* Small "Welcome 👋" eyebrow text */
 .signin-eyebrow {
-  font-size: 16px;
-  color: #888;
+  font-size: 13px;
+  font-family: var(--font-body);
+  color: var(--text-soft);
   margin-bottom: 8px;
 }
 
 /* Main heading */
 .signin-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: #1e1560;
+  font-size: 27px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  color: var(--ink);
   margin-bottom: 4px;
 }
 
 /* Subtitle */
 .signin-subtitle {
-  font-size: 15px;
-  color: #aaa;
+  font-size: 14px;
+  font-family: var(--font-body);
+  color: var(--text-soft);
   margin-bottom: 24px;
 }
 
@@ -217,9 +243,10 @@ body {
   display: inline-block;
   font-size: 12px;
   font-weight: 600;
-  color: #3d2fd9;
-  background: #ede9ff;
-  border: 1px solid #d4ccff;
+  font-family: var(--font-body);
+  color: var(--clay-dark);
+  background: var(--clay-soft);
+  border: 1px solid var(--clay-soft-border);
   border-radius: 20px;
   padding: 5px 14px;
   margin-bottom: 32px;
@@ -233,8 +260,8 @@ body {
 
 /* ============================================================
    6. GOOGLE BUTTON
-   Styled to match official Google sign-in button spec
-   Larger and more prominent now that it's the only action
+   Not currently used (dev login is the live sign-in method) —
+   restyled to match in case it's reintroduced later.
 ============================================================ */
 
 .google-btn {
@@ -243,24 +270,25 @@ body {
   justify-content: center;
   gap: 12px;
   width: 100%;
-  background: #ffffff;
-  border: 1.5px solid #ddd;
+  background: var(--card);
+  border: 1.5px solid var(--line);
   border-radius: 12px;
-  padding: 15px 20px;        /* More padding — button is more prominent now */
-  font-size: 15px;           /* Slightly larger text */
+  padding: 15px 20px;
+  font-size: 15px;
   font-weight: 600;
-  color: #333;
+  font-family: var(--font-body);
+  color: var(--text);
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(20,36,32, 0.05);
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
   margin-bottom: 24px;
 }
 
 .google-btn:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-  border-color: #bbb;
-  transform: translateY(-1px);  /* Subtle lift on hover */
+  box-shadow: 0 6px 20px rgba(20,36,32, 0.08);
+  border-color: var(--clay);
+  transform: translateY(-1px);
 }
 
 /* Google G icon size */
@@ -278,7 +306,8 @@ body {
 /* Note under Google button explaining what happens next */
 .signin-note {
   font-size: 12px;
-  color: #999;
+  font-family: var(--font-body);
+  color: var(--text-soft);
   line-height: 1.6;
   margin-bottom: 24px;
   padding: 0 10px;
@@ -287,7 +316,8 @@ body {
 /* Legal terms at the very bottom */
 .terms-note {
   font-size: 11px;
-  color: #bbb;
+  font-family: var(--font-body);
+  color: var(--text-faint);
   line-height: 1.6;
 }
 
@@ -315,10 +345,11 @@ body {
     font-size: 26px;
   }
 
-  /* Hide feature list on mobile — keep it clean */
-  /* Show only first feature, hide the other two */
-  .feature-item:nth-child(2),
-  .feature-item:nth-child(3) {
+  /* Hide the full feature list on mobile — keep it clean.
+     All three items (including "Smart student matching") are
+     hidden here; the compact brand panel doesn't have room for
+     them and having only the first one show looked unbalanced. */
+  .feature-item {
     display: none;
   }
 
@@ -333,17 +364,6 @@ body {
     margin-bottom: 24px;
   }
 
-  /* Shrink blobs on mobile so they don't overpower */
-  .blob-1 {
-    width: 220px;
-    height: 220px;
-  }
-
-  .blob-2 {
-    width: 120px;
-    height: 120px;
-  }
-
   /* Sign in panel full padding on mobile */
   .signin-panel {
     padding: 40px 28px;
@@ -352,8 +372,9 @@ body {
 }
 /* ============================================================
    9. LOGIN FORM (added for real accounts.login_view)
-   Matches the existing input styling used in profile-setup.css
-   (#e0dcff border, #3d2fd9 focus/primary) for visual consistency.
+   Matches the notebook input styling (--line border, --clay
+   focus/primary) for visual consistency with the rest of the
+   redesign.
 ============================================================ */
 
 .login-form {
@@ -370,7 +391,8 @@ body {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #444;
+  font-family: var(--font-body);
+  color: var(--text);
   margin-bottom: 6px;
 }
 
@@ -382,10 +404,10 @@ body {
   width: 100%;
   padding: 12px 14px;
   font-size: 14px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  color: #333;
-  background: #f8f7ff;
-  border: 1.5px solid #e0dcff;
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--paper);
+  border: 1.5px solid var(--line);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.2s ease;
@@ -393,36 +415,37 @@ body {
 
 .login-form input[type="text"]:focus,
 .login-form input[type="password"]:focus {
-  border-color: #3d2fd9;
-  background: white;
+  border-color: var(--clay);
+  background: var(--card);
 }
 
 .login-submit-btn {
   width: 100%;
   padding: 15px 20px;
-  background: #3d2fd9;
+  background: var(--clay);
   color: white;
   border: none;
   border-radius: 12px;
   font-size: 15px;
-  font-weight: 700;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  font-family: var(--font-body);
   cursor: pointer;
   transition: background 0.2s ease, transform 0.1s ease;
 }
 
 .login-submit-btn:hover {
-  background: #2f23b0;
+  background: var(--clay-dark);
   transform: translateY(-1px);
 }
 
 .login-error {
   width: 100%;
-  background: #fff5f5;
-  border: 1px solid #fecaca;
-  color: #ef4444;
+  background: #FBEEEA;
+  border: 1px solid #E9C2B4;
+  color: #A8442A;
   font-size: 12px;
   font-weight: 600;
+  font-family: var(--font-body);
   padding: 8px 12px;
   border-radius: 8px;
   margin-bottom: 12px;

@@ -24,7 +24,7 @@
 
 /* ============================================================
    1. CHAT HEADER
-   Dark indigo bar at top
+   Dark ink bar at top
    Clicking group area opens group info modal
 ============================================================ */
 
@@ -41,11 +41,12 @@
 .chat-group:hover  { background: rgba(255,255,255,0.08); }
 .chat-group:focus  { background: rgba(255,255,255,0.08); }
 
-/* Group icon circle — teal/amber to distinguish from 1-to-1 */
+/* Group icon circle — blue, tying group chats to the same blue
+   used for "Join a Group" on the Connect page */
 .group-icon-circle {
   width: 38px; height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #f5a623, #e09610);
+  background: linear-gradient(135deg, var(--uni-blue), var(--uni-blue-dark));
   display: flex; align-items: center; justify-content: center;
   font-size: 18px; color: white; flex-shrink: 0;
 }
@@ -65,16 +66,16 @@
 
 
 /* Leave group — amber warning color */
-.leave-item { color: #f59e0b; }
-.leave-item i { color: #f59e0b; }
+.leave-item { color: var(--amber-dark); }
+.leave-item i { color: var(--amber-dark); }
 
 /* shared base in shared-chat.css; this page overrides: color */
 .report-item {
-  color: #ef4444;
+  color: var(--alert-red);
 }
 /* shared base in shared-chat.css; this page overrides: color */
 .report-item i {
-  color: #ef4444;
+  color: var(--alert-red);
 }
 
 
@@ -87,8 +88,8 @@
   position: fixed;
   top: 64px; left: 0; right: 0;
   height: 44px;
-  background: white;
-  border-bottom: 1px solid #e8e6ff;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -108,8 +109,8 @@
 /* Each member chip */
 .member-chip {
   display: flex; align-items: center; gap: 4px;
-  background: #f8f7ff;
-  border: 1px solid #e8e6ff;
+  background: var(--paper);
+  border: 1px solid var(--line);
   border-radius: 20px;
   padding: 4px 10px;
   white-space: nowrap;
@@ -119,16 +120,17 @@
 .member-chip-flag { font-size: 14px; }
 
 .member-chip-name {
-  font-size: 11px; font-weight: 600; color: #555;
+  font-size: 11px; font-weight: 600; color: var(--text-soft);
 }
 
-/* "You" chip — indigo tinted */
+/* "You" chip — green tinted, matching the "you" avatar color
+   used elsewhere in the app */
 .you-chip {
-  background: #ede9ff;
-  border-color: #d4ccff;
+  background: var(--clay-soft);
+  border-color: var(--clay-soft-border);
 }
 
-.you-chip .member-chip-name { color: #3d2fd9; }
+.you-chip .member-chip-name { color: var(--clay-dark); }
 
 
 /* ============================================================
@@ -152,7 +154,7 @@
 
 /* shared base in shared-chat.css; this page overrides: background */
 .messages-area::-webkit-scrollbar-thumb {
-  background: #e8e6ff;
+  background: var(--line);
 }
 
 
@@ -167,9 +169,12 @@
 }
 
 
-/* shared base in shared-chat.css; this page overrides: flex-direction */
+/* shared base in shared-chat.css; this page overrides: flex-direction, align-items
+   (forces sender name/flag + bubble to the left edge regardless of bubble
+   width, instead of inheriting the shared wrap's default alignment) */
 .message-wrap.received {
   flex-direction: column;
+  align-items: flex-start;
 }
 
 
@@ -179,10 +184,16 @@
   margin-bottom: 4px; padding-left: 2px;
 }
 
-.msg-sender-flag { font-size: 14px; }
+.msg-sender-flag {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--clay), var(--clay-dark));
+  border-radius: 50%;
+  font-size: 8px; font-weight: 700; color: white;
+}
 
 .msg-sender-name {
-  font-size: 11px; font-weight: 700; color: #3d2fd9;
+  font-size: 11px; font-weight: 700; color: var(--clay-dark);
 }
 
 
@@ -199,7 +210,7 @@
 
 /* System message — centered, grey italic */
 .system-message {
-  text-align: center; font-size: 12px; color: #aaa;
+  text-align: center; font-size: 12px; color: var(--text-faint);
   font-style: italic; padding: 4px 0;
 }
 
@@ -224,13 +235,13 @@
 .group-modal-top {
   text-align: center;
   padding: 8px 0 20px;
-  border-bottom: 1px solid #f0effe;
+  border-bottom: 1px solid var(--line);
   margin-bottom: 16px;
 }
 
 .group-modal-icon {
   width: 60px; height: 60px;
-  background: linear-gradient(135deg, #f5a623, #e09610);
+  background: linear-gradient(135deg, var(--uni-blue), var(--uni-blue-dark));
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; color: white;
@@ -238,26 +249,26 @@
 }
 
 .group-modal-name {
-  font-size: 17px; font-weight: 800; color: #1e1560; margin-bottom: 4px;
+  font-size: 17px; font-weight: 600; font-family: var(--font-display); color: var(--ink); margin-bottom: 4px;
 }
 
-.group-modal-sub { font-size: 12px; color: #aaa; }
+.group-modal-sub { font-size: 12px; color: var(--text-faint); }
 
 /* Section inside modal */
 .group-modal-section { margin-bottom: 16px; }
 
 .group-modal-label {
-  font-size: 11px; font-weight: 700; color: #888;
+  font-size: 11px; font-weight: 700; color: var(--text-soft);
   text-transform: uppercase; letter-spacing: 0.5px;
   margin-bottom: 10px;
   display: flex; align-items: center; gap: 6px;
 }
 
-.group-modal-label i { font-size: 14px; color: #3d2fd9; }
+.group-modal-label i { font-size: 14px; color: var(--uni-blue); }
 
 /* Small hint text in label */
 .group-modal-hint {
-  font-size: 10px; color: #bbb;
+  font-size: 10px; color: var(--text-faint);
   text-transform: none; letter-spacing: 0;
   margin-left: auto; font-weight: 500;
 }
@@ -277,31 +288,37 @@
   outline: none;
 }
 
-.modal-member-row.clickable:hover { background: #f8f7ff; }
-.modal-member-row.clickable:focus { background: #f8f7ff; }
+.modal-member-row.clickable:hover { background: var(--paper); }
+.modal-member-row.clickable:focus { background: var(--paper); }
 
-.modal-member-flag { font-size: 22px; flex-shrink: 0; }
+.modal-member-flag {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--clay), var(--clay-dark));
+  border-radius: 50%;
+  font-size: 10px; font-weight: 700; color: white;
+}
 
 .modal-member-info { flex: 1; }
 
 .modal-member-name {
-  font-size: 13px; font-weight: 700; color: #1e1560; margin-bottom: 2px;
+  font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 2px;
 }
 
-.modal-member-uni { font-size: 11px; color: #aaa; }
+.modal-member-uni { font-size: 11px; color: var(--text-faint); }
 
 /* Chevron arrow on clickable rows */
 .member-chevron {
-  font-size: 14px; color: #ccc; flex-shrink: 0;
+  font-size: 14px; color: var(--text-faint); flex-shrink: 0;
 }
 
 /* "You" row styling */
-.you-row { background: #f8f7ff; }
+.you-row { background: var(--paper); }
 
-/* "You" badge pill */
+/* "You" badge pill — green, matching the "you" chip/avatar color */
 .you-badge {
   font-size: 10px; font-weight: 700;
-  background: #ede9ff; color: #3d2fd9;
+  background: var(--clay-soft); color: var(--clay-dark);
   padding: 3px 8px; border-radius: 20px;
   flex-shrink: 0;
 }
@@ -334,17 +351,23 @@
 .member-profile-top {
   text-align: center;
   padding: 8px 0 20px;
-  border-bottom: 1px solid #f0effe;
+  border-bottom: 1px solid var(--line);
   margin-bottom: 16px;
 }
 
-.member-profile-flag { font-size: 52px; margin-bottom: 10px; }
-
-.member-profile-name {
-  font-size: 18px; font-weight: 800; color: #1e1560; margin-bottom: 4px;
+.member-profile-flag {
+  display: flex; align-items: center; justify-content: center;
+  width: 68px; height: 68px; margin: 0 auto 10px;
+  background: linear-gradient(135deg, var(--clay), var(--clay-dark));
+  border-radius: 50%;
+  font-size: 20px; font-weight: 700; color: white;
 }
 
-.member-profile-sub { font-size: 12px; color: #aaa; }
+.member-profile-name {
+  font-size: 18px; font-weight: 600; font-family: var(--font-display); color: var(--ink); margin-bottom: 4px;
+}
+
+.member-profile-sub { font-size: 12px; color: var(--text-faint); }
 
 /* Details list */
 .member-profile-details {
@@ -356,15 +379,15 @@
 }
 
 .mp-detail-item i {
-  font-size: 18px; color: #3d2fd9; flex-shrink: 0; margin-top: 2px;
+  font-size: 18px; color: var(--uni-blue); flex-shrink: 0; margin-top: 2px;
 }
 
 .mp-detail-label {
-  font-size: 11px; font-weight: 700; color: #aaa;
+  font-size: 11px; font-weight: 700; color: var(--text-faint);
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
 }
 
-.mp-detail-value { font-size: 14px; font-weight: 600; color: #1e1560; }
+.mp-detail-value { font-size: 14px; font-weight: 600; color: var(--ink); }
 
 /* Interest tags inside member profile */
 .mp-detail-interests {
@@ -383,23 +406,23 @@
 .its-you-emoji { font-size: 48px; margin-bottom: 12px; }
 
 .its-you-text {
-  font-size: 18px; font-weight: 800; color: #1e1560; margin-bottom: 8px;
+  font-size: 18px; font-weight: 600; font-family: var(--font-display); color: var(--ink); margin-bottom: 8px;
 }
 
 .its-you-sub {
-  font-size: 13px; color: #888; line-height: 1.6; margin-bottom: 20px;
+  font-size: 13px; color: var(--text-soft); line-height: 1.6; margin-bottom: 20px;
 }
 
 .its-you-btn {
   display: inline-flex; align-items: center; gap: 8px;
-  background: #3d2fd9; color: white;
+  background: var(--clay); color: white;
   font-size: 14px; font-weight: 700;
   padding: 12px 24px; border-radius: 12px;
   text-decoration: none;
   transition: background 0.2s ease, transform 0.1s ease;
 }
 
-.its-you-btn:hover { background: #2f23b0; transform: translateY(-1px); }
+.its-you-btn:hover { background: var(--clay-dark); transform: translateY(-1px); }
 
 
 /* ============================================================
@@ -409,19 +432,19 @@
 
 /* Leave group confirm — amber warning */
 .leave-confirm-btn {
-  width: 100%; padding: 12px; background: #f59e0b; color: white;
+  width: 100%; padding: 12px; background: var(--amber); color: white;
   font-size: 14px; font-weight: 700;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   border: none; border-radius: 12px; cursor: pointer;
   transition: background 0.2s ease;
 }
 
-.leave-confirm-btn:hover { background: #d97706; }
+.leave-confirm-btn:hover { background: var(--amber-dark); }
 
 
 /* Report modal section label */
 .report-section-label {
-  font-size: 11px; font-weight: 700; color: #888;
+  font-size: 11px; font-weight: 700; color: var(--text-soft);
   text-transform: uppercase; letter-spacing: 0.5px;
   margin-bottom: 8px;
 }
@@ -431,9 +454,9 @@
   display: flex; flex-direction: column; gap: 8px;
   margin-bottom: 4px;
   padding: 12px;
-  background: #f8f7ff;
+  background: var(--paper);
   border-radius: 10px;
-  border: 1px solid #e8e6ff;
+  border: 1px solid var(--line);
 }
 
 /* shared base in shared-chat.css; this page overrides: gap */
@@ -461,7 +484,7 @@
 .modal-cancel-btn:focus-visible,
 .modal-submit-btn:focus-visible,
 .its-you-btn:focus-visible {
-  outline: 2px solid #3d2fd9;
+  outline: 2px solid var(--clay);
   outline-offset: 2px;
 }
 
@@ -495,5 +518,3 @@
   }
   .modal { padding: 20px; }
 }
-
-

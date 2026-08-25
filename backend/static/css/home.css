@@ -2,6 +2,10 @@
    GLOBAL STUDENT CONNECT — home.css
    Home Page Styles
 
+   Palette matches shared-sidebar.css: green (--clay) as the
+   primary accent, --amber reserved for attention/highlight
+   states only (new post), --alert-red for like/notification.
+
    TABLE OF CONTENTS:
    1. SIDEBAR BOTTOM & NOTIFICATION BELL
    2. MAIN CONTENT & FEED COLUMN
@@ -24,61 +28,53 @@
    1. SIDEBAR BOTTOM & NOTIFICATION BELL
 ============================================================ */
 
-
-/* Header bell badge — slightly different positioning */
-.header-badge {
-  border-color: #f8f7ff;
-  top: -4px; right: -4px;
-}
+/* header-badge now lives fully in shared-sidebar.css */
 
 
 /* ============================================================
    2. MAIN CONTENT & FEED COLUMN
 ============================================================ */
 
-
-/* Centered feed column */
 .feed-column {
   width: 100%;
-  max-width: 520px;
+  max-width: 540px;
 }
 
 
 /* ============================================================
    3. FEED HEADER ROW
-   Title on left, notification bell on right (desktop only)
 ============================================================ */
 
 .feed-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .feed-header {
-  font-size: 22px;
-  font-weight: 800;
-  color: #1e1560;
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: var(--font-display);
 }
 
-/* Bell in content header — desktop only */
 .header-bell {
   position: relative;
-  font-size: 22px;
-  color: #1e1560;
+  font-size: 21px;
+  color: var(--ink);
   text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 40px; height: 40px;
-  border-radius: 10px;
-  background: white;
-  border: 1px solid #e8e6ff;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
   transition: background 0.2s ease;
 }
 
-.header-bell:hover { background: #ede9ff; }
+.header-bell:hover { background: var(--clay-soft); }
 
 
 /* ============================================================
@@ -86,25 +82,26 @@
 ============================================================ */
 
 .moment-card {
-  background: white;
-  border-radius: 14px;
+  background: var(--card);
+  border-radius: 16px;
   padding: 16px 18px;
   margin-bottom: 12px;
-  border: 1px solid #e8e6ff;
+  border: 1px solid var(--line);
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .moment-card:hover {
-  box-shadow: 0 4px 16px rgba(61, 47, 217, 0.08);
+  box-shadow: 0 4px 18px rgba(31,27,23,0.06);
+  border-color: #D8D0BF;
 }
 
-/* New post fade-in animation */
 .moment-card.new-post {
   animation: fadeIn 0.4s ease;
-  border-color: #3d2fd9;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px var(--amber);
 }
 
 @keyframes fadeIn {
@@ -112,48 +109,40 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Highlight/bounce when arriving from a notification's "View" link
-   (e.g. someone liked/commented on your post) — triggered by JS
-   checking for a #card-<id> hash on page load, see extra_js block. */
+/* Highlight/bounce when arriving from a notification's "View" link */
 @keyframes highlightBounce {
-  0%   { transform: scale(1);     box-shadow: 0 0 0 rgba(61, 47, 217, 0); }
-  15%  { transform: scale(1.015); box-shadow: 0 0 0 6px rgba(61, 47, 217, 0.15); }
-  30%  { transform: scale(1);     box-shadow: 0 0 0 rgba(61, 47, 217, 0); }
-  45%  { transform: scale(1.01);  box-shadow: 0 0 0 4px rgba(61, 47, 217, 0.12); }
-  60%  { transform: scale(1);     box-shadow: 0 0 0 rgba(61, 47, 217, 0); }
-  100% { transform: scale(1);     box-shadow: 0 0 0 rgba(61, 47, 217, 0); }
+  0%   { transform: scale(1);     box-shadow: 0 0 0 rgba(204, 153, 0, 0); }
+  15%  { transform: scale(1.015); box-shadow: 0 0 0 6px rgba(204, 153, 0, 0.22); }
+  30%  { transform: scale(1);     box-shadow: 0 0 0 rgba(204, 153, 0, 0); }
+  45%  { transform: scale(1.01);  box-shadow: 0 0 0 4px rgba(204, 153, 0, 0.16); }
+  60%  { transform: scale(1);     box-shadow: 0 0 0 rgba(204, 153, 0, 0); }
+  100% { transform: scale(1);     box-shadow: 0 0 0 rgba(204, 153, 0, 0); }
 }
 
 .moment-card.highlight-flash {
   animation: highlightBounce 2.2s ease;
-  border-color: #3d2fd9;
+  border-color: var(--amber);
 }
 
-/* Avatar circle */
 .moment-avatar {
   width: 42px; height: 42px;
   border-radius: 50%;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   font-size: 20px;
+  background: var(--clay-soft);
 }
 
-/* Country-specific avatar colors */
-.av-jp { background: #ede9ff; }
-.av-bd { background: #fff4e0; }
-.av-br { background: #e0f7e9; }
-.av-kr { background: #fce8ff; }
-.av-de { background: #e0f0ff; }
-.av-in { background: #fff0e0; }
-.av-ng { background: #e8ffe0; }
-.av-mx { background: #ffe8e8; }
-.av-fr { background: #ede9ff; }
-.av-ca { background: #e0fff4; }
-.av-pk { background: #fff4e0; }
+/* Country-specific classes still exist in the markup, all
+   resolve to the same clay-soft tint — one consistent avatar
+   background reads calmer than many pastels side by side. */
+.av-jp, .av-bd, .av-br, .av-kr, .av-de,
+.av-in, .av-ng, .av-mx, .av-fr, .av-ca, .av-pk {
+  background: var(--clay-soft);
+}
 
-/* Current user's avatar */
 .av-user {
-  background: #3d2fd9;
+  background: var(--clay);
   color: white;
   font-size: 18px;
 }
@@ -161,27 +150,28 @@
 .moment-body { flex: 1; min-width: 0; }
 
 .moment-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1e1560;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
   margin-bottom: 2px;
+  font-family: var(--font-display);
 }
 
 .moment-uni {
-  font-size: 11px;
-  color: #aaa;
+  font-size: 11.5px;
+  color: var(--text-soft);
   margin-bottom: 6px;
 }
 
 .moment-text {
-  font-size: 13px;
-  color: #444;
+  font-size: 13.5px;
+  color: var(--text);
   line-height: 1.6;
 }
 
 .moment-meta {
   font-size: 11px;
-  color: #bbb;
+  color: #B3AEA1;
   margin-top: 6px;
   margin-bottom: 10px;
 }
@@ -198,7 +188,6 @@
   padding-top: 4px;
 }
 
-/* Like button */
 .like-btn {
   display: flex;
   align-items: center;
@@ -207,33 +196,31 @@
   border: none;
   font-size: 13px;
   font-weight: 600;
-  color: #aaa;
+  color: #6B7A70;
   cursor: pointer;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   padding: 4px 0;
   transition: color 0.2s ease, transform 0.1s ease;
 }
 
 .like-btn:hover {
-  color: #ef4444;
+  color: var(--clay-dark);
   transform: scale(1.05);
 }
 
-/* Liked state — red heart */
+/* Liked state — red heart, the near-universal "liked" signal */
 .like-btn.liked {
-  color: #ef4444;
+  color: var(--alert-red);
 }
 
 .like-btn.liked i {
-  /* Filled heart feel when liked */
-  color: #ef4444;
+  color: var(--alert-red);
 }
 
 .like-count {
   font-size: 12px;
 }
 
-/* Comment button */
 .comment-btn {
   display: flex;
   align-items: center;
@@ -242,23 +229,21 @@
   border: none;
   font-size: 13px;
   font-weight: 600;
-  color: #aaa;
+  color: #6B7A70;
   cursor: pointer;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   padding: 4px 0;
   transition: color 0.2s ease;
 }
 
-.comment-btn:hover { color: #3d2fd9; }
+.comment-btn:hover { color: var(--ink); }
 
 
 /* ============================================================
    6. COMMENTS SECTION
-   Hidden by default, shown when comment button clicked
 ============================================================ */
 
 .comments-section {
-  /* Hidden by default — toggled by JS */
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s ease, padding 0.3s ease;
@@ -266,15 +251,13 @@
   border-top: 0px solid transparent;
 }
 
-/* Open state */
 .comments-section.open {
   max-height: 600px;
   padding-top: 12px;
-  border-top: 1px solid #f0effe;
+  border-top: 1px solid var(--line);
   margin-top: 8px;
 }
 
-/* Individual comment */
 .comment-item {
   display: flex;
   align-items: flex-start;
@@ -282,44 +265,39 @@
   margin-bottom: 10px;
 }
 
-/* New comment fade in */
 .comment-item.new-comment {
   animation: fadeIn 0.3s ease;
 }
 
-/* Comment avatar emoji */
 .comment-avatar {
   font-size: 18px;
   flex-shrink: 0;
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
-  background: #f0effe;
+  background: var(--clay-soft);
   border-radius: 50%;
 }
 
 .comment-body {
   flex: 1;
-  background: #f8f7ff;
+  background: var(--paper);
   border-radius: 10px;
   padding: 8px 12px;
 }
 
-/* Comment author name */
 .comment-name {
   font-size: 12px;
   font-weight: 700;
-  color: #1e1560;
+  color: var(--ink);
   margin-right: 6px;
 }
 
-/* Comment text */
 .comment-text {
   font-size: 12px;
   color: #555;
   line-height: 1.4;
 }
 
-/* Comment input row */
 .comment-input-row {
   display: flex;
   align-items: center;
@@ -327,38 +305,35 @@
   margin-top: 8px;
 }
 
-/* Small avatar next to input */
 .comment-input-avatar {
   width: 28px; height: 28px;
   border-radius: 50%;
-  background: #3d2fd9;
+  background: var(--ink);
   display: flex; align-items: center; justify-content: center;
   font-size: 13px;
   color: white;
   flex-shrink: 0;
 }
 
-/* Comment text input */
 .comment-input {
   flex: 1;
   padding: 8px 12px;
   font-size: 12px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  border: 1.5px solid #e0dcff;
+  font-family: var(--font-body);
+  border: 1.5px solid var(--line);
   border-radius: 20px;
   outline: none;
-  color: #333;
-  background: #f8f7ff;
+  color: var(--text);
+  background: var(--paper);
   transition: border-color 0.2s ease;
 }
 
-.comment-input:focus { border-color: #3d2fd9; }
-.comment-input::placeholder { color: #bbb; }
+.comment-input:focus { border-color: var(--clay); }
+.comment-input::placeholder { color: var(--text-faint); }
 
-/* Send comment button */
 .comment-send {
   width: 30px; height: 30px;
-  background: #3d2fd9;
+  background: var(--ink);
   border: none; border-radius: 50%;
   color: white; font-size: 13px;
   cursor: pointer;
@@ -367,7 +342,7 @@
   transition: background 0.2s ease;
 }
 
-.comment-send:hover { background: #2f23b0; }
+.comment-send:hover { background: var(--clay-dark); }
 
 
 /* ============================================================
@@ -377,32 +352,33 @@
 .caught-up {
   text-align: center;
   padding: 28px 0 20px;
-  border-top: 1px dashed #ddd;
+  border-top: 1px dashed var(--line);
   margin-top: 8px;
 }
 
-.caught-up-icon { font-size: 30px; margin-bottom: 8px; }
+.caught-up-icon { font-size: 28px; margin-bottom: 8px; }
 
 .caught-up-title {
   font-size: 15px;
-  font-weight: 700;
-  color: #1e1560;
+  font-weight: 600;
+  color: var(--ink);
   margin-bottom: 4px;
+  font-family: var(--font-display);
 }
 
 .caught-up-date {
   font-size: 12px;
-  color: #bbb;
+  color: var(--text-soft);
   margin-bottom: 20px;
 }
 
 .see-more-btn {
-  background: #f0effe;
-  border: 1.5px solid #d4ccff;
-  color: #3d2fd9;
+  background: var(--clay-soft);
+  border: 1.5px solid #A9DDD0;
+  color: var(--clay-dark);
   font-size: 13px;
   font-weight: 600;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   border-radius: 20px;
   padding: 9px 24px;
   cursor: pointer;
@@ -410,11 +386,10 @@
 }
 
 .see-more-btn:hover {
-  background: #e4deff;
+  background: #C3ECE1;
   transform: translateY(-1px);
 }
 
-/* Older day sections — hidden by default */
 .day-section { display: none; }
 
 .day-divider {
@@ -424,28 +399,27 @@
   margin: 24px 0 14px;
 }
 
-.day-divider-line { flex: 1; height: 1px; background: #e8e6ff; }
+.day-divider-line { flex: 1; height: 1px; background: var(--line); }
 
 .day-divider-label {
   font-size: 11px;
   font-weight: 700;
-  color: #aaa;
+  color: var(--text-soft);
   white-space: nowrap;
 }
 
-/* Load next day button */
 .load-next-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   width: 100%;
-  background: white;
-  border: 1.5px solid #e8e6ff;
-  color: #3d2fd9;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 600;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   border-radius: 10px;
   padding: 10px;
   cursor: pointer;
@@ -453,14 +427,13 @@
   transition: background 0.2s ease;
 }
 
-.load-next-btn:hover { background: #f0effe; }
+.load-next-btn:hover { background: var(--clay-soft); }
 
-/* End of 7 days message */
 .end-of-feed {
   text-align: center;
   padding: 28px 0 60px;
   font-size: 13px;
-  color: #ccc;
+  color: #C4BFB1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -474,8 +447,6 @@
    8. ASSISTANT PANEL
 ============================================================ */
 
-
-/* shared base in shared-sidebar.css; this page overrides: max-height */
 .assistant-body {
   max-height: 300px;
 }
@@ -489,7 +460,7 @@
   display: none;
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(31,27,23,0.5);
   z-index: 300;
   align-items: center;
   justify-content: center;
@@ -497,7 +468,7 @@
 }
 
 .modal {
-  background: white;
+  background: var(--card);
   border-radius: 18px;
   padding: 24px;
   width: 100%;
@@ -514,17 +485,18 @@
 
 .modal-title {
   font-size: 16px;
-  font-weight: 800;
-  color: #1e1560;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: var(--font-display);
 }
 
 .modal-close {
   background: none; border: none;
-  font-size: 20px; color: #aaa;
+  font-size: 20px; color: var(--text-soft);
   cursor: pointer; transition: color 0.2s ease;
 }
 
-.modal-close:hover { color: #333; }
+.modal-close:hover { color: var(--ink); }
 
 .modal-user {
   display: flex;
@@ -535,7 +507,7 @@
 
 .modal-avatar {
   width: 36px; height: 36px;
-  background: #3d2fd9;
+  background: var(--clay);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   color: white; font-size: 16px; flex-shrink: 0;
@@ -543,8 +515,9 @@
 
 .modal-username {
   font-size: 14px;
-  font-weight: 700;
-  color: #1e1560;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: var(--font-display);
 }
 
 .moment-textarea {
@@ -552,22 +525,22 @@
   height: 100px;
   padding: 12px 14px;
   font-size: 14px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  color: #333;
-  background: #f8f7ff;
-  border: 1.5px solid #e0dcff;
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--paper);
+  border: 1.5px solid var(--line);
   border-radius: 12px;
   resize: none;
   outline: none;
   transition: border-color 0.2s ease;
 }
 
-.moment-textarea:focus { border-color: #3d2fd9; }
-.moment-textarea::placeholder { color: #bbb; }
+.moment-textarea:focus { border-color: var(--clay); }
+.moment-textarea::placeholder { color: var(--text-faint); }
 
 .char-count {
   font-size: 11px;
-  color: #bbb;
+  color: var(--text-soft);
   text-align: right;
   margin-top: 6px;
   margin-bottom: 16px;
@@ -576,11 +549,11 @@
 .modal-post-btn {
   width: 100%;
   padding: 13px;
-  background: #3d2fd9;
+  background: var(--clay);
   color: white;
   font-size: 14px;
-  font-weight: 700;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  font-family: var(--font-body);
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -588,7 +561,7 @@
 }
 
 .modal-post-btn:hover {
-  background: #2f23b0;
+  background: var(--clay-dark);
   transform: translateY(-1px);
 }
 
@@ -597,8 +570,6 @@
    10. BOTTOM NAV — Mobile only
 ============================================================ */
 
-
-/* shared base in shared-sidebar.css; this page overrides: background, border, cursor */
 .bottom-nav-post {
   background: none;
   border: none;
@@ -612,16 +583,10 @@
 
 @media (max-width: 768px) {
 
-
-  /* Hide desktop header bell */
   .header-bell { display: none; }
 
-
-  /* Feed full width on mobile */
   .feed-column { max-width: 100%; }
 
-
-  /* Slightly smaller moment cards on mobile */
   .moment-card { padding: 14px 14px; }
 
 }
