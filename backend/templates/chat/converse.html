@@ -177,7 +177,7 @@
       </div>
 
       <p class="modal-desc">
-        Please select a reason. Our Safety Agent will review your report.
+        Please select a reason. Our Team will review your report.
       </p>
 
       <div class="report-options">
@@ -596,7 +596,7 @@
         .then(data => {
           closeModal('reportModal');
           showToast(data.ok
-            ? 'Report submitted. Our Safety Agent will review it. 🛡️'
+            ? 'Report submitted. Our Team will review it. 🛡️'
             : (data.error || 'Could not submit report'));
         });
     }
