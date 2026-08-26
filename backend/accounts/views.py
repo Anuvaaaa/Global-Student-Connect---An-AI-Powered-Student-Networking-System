@@ -4,8 +4,6 @@ import requests
 from django.conf import settings
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm
-from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -29,59 +27,18 @@ GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 
 def login_view(request):
     """
-    Fake username/password login (Person A Step 1) — NOT Google OAuth.
-    Deliberately built first so the rest of the team can test without
-    Cloud Console setup. Swap this for real Google sign-in later (Step 7)
-    without touching profile_setup_view/profile_view at all — they only
-    care that request.user is authenticated, not how.
+    Landing / sign-in page. Google OAuth (google_login_view /
+    google_callback_view below) is the only real sign-in path — the old
+    dev username/password form was a temporary placeholder used before
+    Google sign-in was wired up and has been removed. block_message can
+    still arrive here via a redirect from google_callback_view (e.g. a
+    banned/suspended account, or a non-academic email).
     """
     if request.user.is_authenticated:
         return redirect('social:home')
 
-    form = AuthenticationForm(request, data=request.POST or None)
-    block_message = None
-
-    # Handled by google_signin_view via fetch(), not this view's POST
-    # branch — GOOGLE_OAUTH_CLIENT_ID is only read here so the template
-    # can initialize the Google Identity Services button.
-    google_client_id = settings.GOOGLE_OAUTH_CLIENT_ID
-
-    if request.method == 'POST' and form.is_valid():
-        user = form.get_user()
-
-        block_message = get_block_message(user, timezone.now())
-
-        # Only unverified users go through the domain check — an
-        # already-verified user's domain was already checked once and
-        # shouldn't be re-blocked on a later login even if the domain
-        # pattern list changes in the meantime.
-        if not block_message and not user.is_verified:
-            block_message = get_verification_block_message(user.email)
-
-        if block_message:
-            return render(request, 'accounts/index.html', {
-                'form': form,
-                'block_message': block_message,
-                'google_client_id': google_client_id,
-            })
-
-        if not user.is_verified:
-            complete_verification(user)
-            # Consumed once by whichever page renders next (profile
-            # setup or profile) to show the one-time "Verified" modal.
-            request.session['show_verified_notice'] = True
-
-        login(request, user)
-
-        profile = getattr(user, 'profile', None)
-        if not profile or not profile.profile_setup_complete:
-            return redirect('accounts:profile_setup')
-        return redirect('social:home')
-
     return render(request, 'accounts/index.html', {
-        'form': form,
-        'block_message': block_message,
-        'google_client_id': google_client_id,
+        'block_message': request.session.pop('login_block_message', None),
     })
 
 
@@ -110,17 +67,14 @@ def google_callback_view(request):
     Step 2: Google redirects here with either ?code=... (success) or
     ?error=... (user cancelled, or e.g. not an approved test user).
     Exchanges the code for an ID token server-to-server, verifies it,
-    then runs the exact same block/verification logic as login_view so
-    a banned/suspended/non-academic-domain user can't bypass those
-    checks just by using Google instead of the dev login form.
+    then runs the exact same block/verification logic that used to live
+    in the dev login view so a banned/suspended/non-academic-domain
+    user can't get through.
     """
     error = request.GET.get('error')
     if error:
-        return render(request, 'accounts/index.html', {
-            'form': AuthenticationForm(),
-            'block_message': "Google sign-in was cancelled or denied.",
-            'google_client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
-        })
+        request.session['login_block_message'] = "Google sign-in was cancelled or denied."
+        return redirect('accounts:login')
 
     code = request.GET.get('code')
     if not code:
@@ -136,12 +90,8 @@ def google_callback_view(request):
     })
 
     if token_response.status_code != 200:
-        print("GOOGLE TOKEN EXCHANGE FAILED:", token_response.status_code, token_response.text)  # TEMP DEBUG — remove after fixing
-        return render(request, 'accounts/index.html', {
-            'form': AuthenticationForm(),
-            'block_message': "Couldn't complete Google sign-in. Please try again.",
-            'google_client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
-        })
+        request.session['login_block_message'] = "Couldn't complete Google sign-in. Please try again."
+        return redirect('accounts:login')
 
     token = token_response.json().get('id_token')
 
@@ -150,11 +100,8 @@ def google_callback_view(request):
             token, google_requests.Request(), settings.GOOGLE_OAUTH_CLIENT_ID
         )
     except ValueError:
-        return render(request, 'accounts/index.html', {
-            'form': AuthenticationForm(),
-            'block_message': "Invalid Google credential.",
-            'google_client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
-        })
+        request.session['login_block_message'] = "Invalid Google credential."
+        return redirect('accounts:login')
 
     email = payload.get('email')
     google_sub = payload.get('sub')
@@ -164,11 +111,8 @@ def google_callback_view(request):
     # proceed on an unverified email rather than let it slip past our
     # own academic-domain check below.
     if not email or not payload.get('email_verified'):
-        return render(request, 'accounts/index.html', {
-            'form': AuthenticationForm(),
-            'block_message': "Google account has no verified email.",
-            'google_client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
-        })
+        request.session['login_block_message'] = "Google account has no verified email."
+        return redirect('accounts:login')
 
     user = User.objects.filter(google_id=google_sub).first()
 
@@ -195,11 +139,8 @@ def google_callback_view(request):
         block_message = get_verification_block_message(user.email)
 
     if block_message:
-        return render(request, 'accounts/index.html', {
-            'form': AuthenticationForm(),
-            'block_message': block_message,
-            'google_client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
-        })
+        request.session['login_block_message'] = block_message
+        return redirect('accounts:login')
 
     if not user.is_verified:
         complete_verification(user)
