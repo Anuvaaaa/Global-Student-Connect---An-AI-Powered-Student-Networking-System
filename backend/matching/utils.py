@@ -135,6 +135,12 @@ def get_open_group_for(user, group_max_members, min_overlap_ratio=0.4):
         UserInterest.objects.filter(user=user).values_list("interest_id", flat=True)
     )
 
+    blocked_ids = set(
+        Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+    ) | set(
+        Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+    )
+
     candidates = []
     for group in StudentGroup.objects.exclude(id__in=already_in_ids):
         members = list(
@@ -149,6 +155,9 @@ def get_open_group_for(user, group_max_members, min_overlap_ratio=0.4):
         compatible_with_everyone = True
         for gm in members:
             member_profile = getattr(gm.user, "profile", None)
+            if gm.user_id in blocked_ids:
+                compatible_with_everyone = False
+                break
 
             if not user_profile or not member_profile or user_profile.gender != member_profile.gender:
                 compatible_with_everyone = False

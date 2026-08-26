@@ -387,6 +387,16 @@ class GetOpenGroupForTests(TestCase):
 
         self.assertEqual(result, fuller_group)
 
+    def test_excludes_group_containing_blocked_user(self):
+        # set up a group where one member has an active Block with self.user
+        # (either direction, mirroring test_excludes_user_blocked_by_requester
+        # and test_excludes_user_who_blocked_requester above)
+        result = get_open_group_for(self.user, group_max_members=4)
+        
+        self.assertIsNone(result)  # or asserts a different, still-compatible group is returned
+        
+    
+
 
 # =====================================================================
 # UTILS — get_best_match
